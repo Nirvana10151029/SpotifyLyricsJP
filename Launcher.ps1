@@ -13,7 +13,7 @@ function Write-LauncherLog {
 
 try {
     New-Item -ItemType Directory -Path $dataDirectory -Force | Out-Null
-    Write-LauncherLog 'Launcher 1.4.0 started.'
+    Write-LauncherLog 'Launcher 1.4.1 started.'
 
     if (-not (Test-Path -LiteralPath $mainScript -PathType Leaf)) {
         throw "Main script was not found: $mainScript"
@@ -35,7 +35,7 @@ try {
     }
 
     Write-Host ''
-    Write-Host 'Spotify Lyrics JP 1.4.0' -ForegroundColor Cyan
+    Write-Host 'Spotify Lyrics JP 1.4.1' -ForegroundColor Cyan
     Write-Host 'この黒い画面は、動作確認が終わるまで開いたままで正常です。' -ForegroundColor Gray
     Write-Host ''
     Write-LauncherLog 'Main script syntax check passed.'

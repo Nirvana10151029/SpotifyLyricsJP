@@ -10,7 +10,7 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $script:AppName = 'Spotify Lyrics JP'
-$script:Version = '1.4.0'
+$script:Version = '1.4.1'
 $script:DataDirectory = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'SpotifyLyricsJPStore'
 $script:LogPath = Join-Path $script:DataDirectory 'SpotifyLyricsJPStore.log'
 $script:SettingsPath = Join-Path $script:DataDirectory 'settings.json'
@@ -229,7 +229,7 @@ function Invoke-Utf8TextRequest {
     $request = [System.Net.WebRequest]::Create($Uri)
     $request.Method = 'GET'
     $request.Accept = 'application/json'
-    $request.UserAgent = 'SpotifyLyricsJPStore/1.4.0'
+    $request.UserAgent = 'SpotifyLyricsJPStore/1.4.1'
     $request.Timeout = [math]::Max(1000, $TimeoutSec * 1000)
     $request.ReadWriteTimeout = [math]::Max(1000, $TimeoutSec * 1000)
     $request.AutomaticDecompression = [System.Net.DecompressionMethods]::GZip -bor [System.Net.DecompressionMethods]::Deflate
@@ -265,7 +265,7 @@ function Invoke-Utf8JsonPostRequest {
     $request.Method = 'POST'
     $request.Accept = 'application/json'
     $request.ContentType = 'application/json; charset=utf-8'
-    $request.UserAgent = 'SpotifyLyricsJPStore/1.4.0'
+    $request.UserAgent = 'SpotifyLyricsJPStore/1.4.1'
     $request.Timeout = [math]::Max(1000, $TimeoutSec * 1000)
     $request.ReadWriteTimeout = [math]::Max(1000, $TimeoutSec * 1000)
     $request.AutomaticDecompression = [System.Net.DecompressionMethods]::GZip -bor [System.Net.DecompressionMethods]::Deflate
@@ -299,7 +299,7 @@ function Invoke-Utf8JsonPostRequest {
 function Invoke-JsonRequest {
     param([Parameter(Mandatory = $true)][string]$Uri)
 
-    $headers = @{ 'Lrclib-Client' = 'SpotifyLyricsJPStore/1.4.0 (Windows companion)' }
+    $headers = @{ 'Lrclib-Client' = 'SpotifyLyricsJPStore/1.4.1 (Windows companion)' }
     $jsonText = Invoke-Utf8TextRequest -Uri $Uri -Headers $headers -TimeoutSec 15
     return ($jsonText | ConvertFrom-Json)
 }
@@ -660,12 +660,19 @@ function Get-LyricsEntry {
     if ($Album) { $base += "&album_name=$albumQuery" }
     if ($durationQuery -gt 0) { $base += "&duration=$durationQuery" }
 
+    # Do not immediately settle for untimed lyrics. Keep them as a fallback
+    # while looking through LRCLIB and the other providers for synchronized
+    # lyrics. This also lets a timed alternate replace an exact plain result.
+    $plainFallback = $null
+
     try {
         $entry = Invoke-JsonRequest $base
         if ($entry -and ($entry.syncedLyrics -or $entry.plainLyrics)) {
             $candidate = Select-BestLrclibCandidate -Candidates @($entry) -Title $Title -Artist $Artist -Album $Album -DurationSeconds $DurationSeconds
             if ($candidate) {
-                return New-LyricsEntryResult -SyncedLyrics ([string]$candidate.syncedLyrics) -PlainLyrics ([string]$candidate.plainLyrics) -Source 'LRCLIB'
+                $result = New-LyricsEntryResult -SyncedLyrics ([string]$candidate.syncedLyrics) -PlainLyrics ([string]$candidate.plainLyrics) -Source 'LRCLIB'
+                if (-not [string]::IsNullOrWhiteSpace([string]$result.syncedLyrics)) { return $result }
+                $plainFallback = $result
             }
         }
     } catch {
@@ -679,18 +686,33 @@ function Get-LyricsEntry {
     foreach ($searchUri in $searchUris) {
         try {
             $candidates = @(Invoke-JsonRequest $searchUri)
-            $candidate = Select-BestLrclibCandidate -Candidates $candidates -Title $Title -Artist $Artist -Album $Album -DurationSeconds $DurationSeconds
-            if ($candidate) {
-                return New-LyricsEntryResult -SyncedLyrics ([string]$candidate.syncedLyrics) -PlainLyrics ([string]$candidate.plainLyrics) -Source 'LRCLIB'
+            $syncedCandidates = @($candidates | Where-Object {
+                -not [string]::IsNullOrWhiteSpace([string](Get-ObjectPropertyValue -InputObject $_ -Name 'syncedLyrics'))
+            })
+            if ($syncedCandidates.Count -gt 0) {
+                $syncedCandidate = Select-BestLrclibCandidate -Candidates $syncedCandidates -Title $Title -Artist $Artist -Album $Album -DurationSeconds $DurationSeconds
+                if ($syncedCandidate) {
+                    return New-LyricsEntryResult -SyncedLyrics ([string]$syncedCandidate.syncedLyrics) -PlainLyrics ([string]$syncedCandidate.plainLyrics) -Source 'LRCLIB'
+                }
+            }
+            if (-not $plainFallback) {
+                $plainCandidate = Select-BestLrclibCandidate -Candidates $candidates -Title $Title -Artist $Artist -Album $Album -DurationSeconds $DurationSeconds
+                if ($plainCandidate -and -not [string]::IsNullOrWhiteSpace([string]$plainCandidate.plainLyrics)) {
+                    $plainFallback = New-LyricsEntryResult -PlainLyrics ([string]$plainCandidate.plainLyrics) -Source 'LRCLIB'
+                }
             }
         } catch {
             Write-AppLog "LRCLIB search failed: $(Get-ErrorMessage $_)"
         }
     }
 
-    Write-AppLog "LRCLIB had no matching lyrics. Trying non-LRCLIB synchronized sources: $Artist - $Title"
+    Write-AppLog "LRCLIB had no matching synchronized lyrics. Trying non-LRCLIB synchronized sources: $Artist - $Title"
     $lyricaEntry = Get-LyricaEntry -Title $Title -Artist $Artist -Album $Album -DurationSeconds $DurationSeconds
     if ($lyricaEntry) { return $lyricaEntry }
+    if ($plainFallback) {
+        Write-AppLog "No synchronized source matched. Using LRCLIB plain lyrics: $Artist - $Title"
+        return $plainFallback
+    }
     Write-AppLog "No synchronized fallback found. Trying Lyrics.ovh plain lyrics: $Artist - $Title"
     return Get-LyricsOvhEntry -Title $Title -Artist $Artist -Album $Album -DurationSeconds $DurationSeconds
 }
@@ -1283,8 +1305,7 @@ function Load-TrackLyrics {
             $engine = [string](Get-ObjectPropertyValue -InputObject $lyrics -Name 'TranslationEngine')
             if ([string]::IsNullOrWhiteSpace($engine)) { $engine = Get-TranslationEngineText }
             if ($lyrics.HasTimestamps) { Set-Status "同期歌詞: $($lyrics.Source)　/　和訳: $engine" }
-            elseif ($lyrics.Source -eq 'Lyrics.ovh') { Set-Status "歌詞: Lyrics.ovh（同期情報なし）　/　和訳: $engine" }
-            else { Set-Status "歌詞: LRCLIB（この曲は同期情報なし）　/　和訳: $engine" }
+            else { Set-Status "歌詞: $($lyrics.Source)（同期情報なし）　/　和訳: $engine" }
         } else {
             Set-Status 'この曲の公開歌詞は見つかりませんでした。' -Error
         }

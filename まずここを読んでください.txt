@@ -8,6 +8,7 @@ Store版Spotifyをそのまま使えます。
 2. RUN.bat をダブルクリックする
 3. 小さい歌詞ウィンドウをSpotifyの横に置く
 
+同期情報のない歌詞が見つかった場合は、LRCLIB内の別候補と他サービスの同期歌詞を自動で探し、見つかれば入れ替えます。
 歌詞が別の曲のものだった場合は「別ソース」を押してください。LRCLIB以外の同期歌詞を探します。
 通常の検索へ戻すときは「再取得」を押してください。
 
@@ -37,7 +38,7 @@ APIキー作成先
 - Spotify開発者登録
 - APIキー（無料翻訳の場合）
 
-歌詞はLRCLIBで検索し、見つからない場合はLyricaの同期歌詞、Lyrics.ovhの通常歌詞も検索します。
+歌詞はLRCLIBとLyricaの同期歌詞を優先し、同期版がない場合はLRCLIBまたはLyrics.ovhの通常歌詞を表示します。
 曲名・アーティスト名はLRCLIB、Lyrica、Lyrics.ovhへ送信されます。歌詞本文は、選んだ方式に応じて無料翻訳サービス、Google Gemini API、DeepL API、OpenAI APIへ送信されますが、Spotifyのログイン情報は一切送られません。
 
 起動しない場合は DIAGNOSE.bat を実行してください。
