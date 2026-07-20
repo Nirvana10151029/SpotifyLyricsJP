@@ -1,13 +1,25 @@
 (function spotifyLyricsJPBootstrap() {
     "use strict";
 
-    if (!globalThis.Spicetify || !Spicetify.Player || !Spicetify.React ||
-        !Spicetify.Panel || !Spicetify.Topbar || !Spicetify.PopupModal) {
+    const requiredApis = ["Player", "React"];
+    const missingApis = !globalThis.Spicetify
+        ? ["Spicetify"]
+        : requiredApis.filter((name) => !Spicetify[name]);
+    if (missingApis.length) {
+        const attempts = Number(globalThis.__SLJP_BOOTSTRAP_ATTEMPTS || 0) + 1;
+        globalThis.__SLJP_BOOTSTRAP_ATTEMPTS = attempts;
+        if (attempts >= 150) {
+            const message = `Spotify Lyrics JPを開始できません（不足: ${missingApis.join(", ")}）。START-INSTALL.batをもう一度実行してください。`;
+            console.error(`[SpotifyLyricsJP] ${message}`);
+            try { globalThis.Spicetify?.showNotification?.(message, true, 10000); } catch {}
+            return;
+        }
         setTimeout(spotifyLyricsJPBootstrap, 200);
         return;
     }
+    delete globalThis.__SLJP_BOOTSTRAP_ATTEMPTS;
 
-    const VERSION = "2.0.2";
+    const VERSION = "2.0.6";
     const STORAGE_KEY = "spotify-lyrics-jp:settings";
     const CACHE_LIMIT = 30;
     const REQUEST_TIMEOUT_MS = 25000;
@@ -790,7 +802,70 @@
     }
 
     function showSettingsDialog() {
-        Spicetify.PopupModal.display({ title: "Spotify Lyrics JP — API設定", content: h(SettingsDialog), isLarge: true });
+        if (Spicetify.PopupModal?.display) {
+            Spicetify.PopupModal.display({ title: "Spotify Lyrics JP — API設定", content: h(SettingsDialog), isLarge: true });
+            return;
+        }
+        showDomSettingsDialog();
+    }
+
+    function showDomSettingsDialog() {
+        document.getElementById("sljp-dom-modal")?.remove();
+        const overlay = document.createElement("div");
+        overlay.id = "sljp-dom-modal";
+        overlay.className = "sljp-dom-modal";
+        const card = document.createElement("div");
+        card.className = "sljp-dom-modal-card";
+
+        const title = document.createElement("h2");
+        title.textContent = "Spotify Lyrics JP — API設定";
+        card.appendChild(title);
+
+        const note = document.createElement("p");
+        note.textContent = "無料翻訳はAPIキー不要です。キーはこのPCのSpotify用ローカル領域に保存されます（暗号化はされません）。";
+        card.appendChild(note);
+
+        const draft = { ...settings };
+        for (const [key, labelText] of [
+            ["geminiApiKey", "Gemini APIキー"],
+            ["deepLApiKey", "DeepL APIキー"],
+            ["openAiApiKey", "OpenAI APIキー"]
+        ]) {
+            const label = document.createElement("label");
+            label.textContent = labelText;
+            const input = document.createElement("input");
+            input.type = "password";
+            input.value = draft[key];
+            input.autocomplete = "off";
+            input.addEventListener("input", () => { draft[key] = input.value; });
+            label.appendChild(input);
+            card.appendChild(label);
+        }
+
+        const actions = document.createElement("div");
+        actions.className = "sljp-dom-modal-actions";
+        const cancel = document.createElement("button");
+        cancel.textContent = "閉じる";
+        cancel.addEventListener("click", () => overlay.remove());
+        const save = document.createElement("button");
+        save.className = "sljp-primary";
+        save.textContent = "保存して現在の曲を翻訳";
+        save.addEventListener("click", () => {
+            saveSettings(draft);
+            overlay.remove();
+            if (missingKeyForMode(draft.translationMode)) {
+                setState({ status: "選択した翻訳サービスのAPIキーを設定してください。", error: "APIキーが未設定です。" });
+            } else {
+                retranslateCurrent();
+            }
+        });
+        actions.append(cancel, save);
+        card.appendChild(actions);
+        overlay.appendChild(card);
+        overlay.addEventListener("click", (event) => {
+            if (event.target === overlay) overlay.remove();
+        });
+        document.body.appendChild(overlay);
     }
 
     function changeMode(event) {
@@ -808,13 +883,22 @@
         saveSettings({ ...settings, [key]: value });
     }
 
+    function scrollActiveLine(scrollArea, element, behavior = "smooth") {
+        if (!scrollArea || !element) return;
+        const areaRect = scrollArea.getBoundingClientRect();
+        const elementRect = element.getBoundingClientRect();
+        const top = scrollArea.scrollTop + (elementRect.top - areaRect.top) -
+            (scrollArea.clientHeight - elementRect.height) / 2;
+        scrollArea.scrollTo({ top: Math.max(0, top), behavior });
+    }
+
     function LyricsPanel() {
         const snapshot = useLyricsState();
         const scrollAreaRef = React.useRef(null);
         React.useEffect(() => {
             if (!snapshot.settings.autoScroll || snapshot.activeIndex < 0) return;
             const element = scrollAreaRef.current?.querySelector(`[data-line-index="${snapshot.activeIndex}"]`);
-            element?.scrollIntoView({ behavior: "smooth", block: "center" });
+            scrollActiveLine(scrollAreaRef.current, element);
         }, [snapshot.activeIndex, snapshot.settings.autoScroll]);
 
         const trackTitle = snapshot.track ? `${snapshot.track.title} — ${snapshot.track.artist}` : "Spotify Lyrics JP";
@@ -873,18 +957,228 @@
             .sljp-empty { padding: 28px 12px; color: var(--spice-subtext); line-height: 1.7; }
             .sljp-status { padding: 8px 12px; border-top: 1px solid rgba(255,255,255,.08); color: var(--spice-subtext); font-size: 11px; line-height: 1.35; }
             .sljp-status.error { color: #ff8a8a; }
+            .sljp-fallback-panel { position: fixed; z-index: 999998; top: 64px; right: 360px; bottom: 96px; width: min(400px, calc(100vw - 24px)); overflow: hidden; border: 1px solid rgba(255,255,255,.13); border-radius: 12px; box-shadow: 0 16px 55px rgba(0,0,0,.6); background: var(--spice-main); }
+            .sljp-fallback-toggle { position: fixed; z-index: 999999; right: 380px; bottom: 108px; border: 0; border-radius: 999px; padding: 10px 15px; background: #1ed760; color: #000; font-weight: 800; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
+            .sljp-fallback-header { display: flex; align-items: center; gap: 8px; }
+            .sljp-fallback-header .sljp-track { flex: 1; min-width: 0; }
+            .sljp-fallback-close { margin-right: 10px; border: 0; border-radius: 50%; width: 30px; height: 30px; color: var(--spice-text); background: var(--spice-button-disabled); cursor: pointer; }
+            .sljp-dom-modal { position: fixed; z-index: 1000000; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(0,0,0,.68); }
+            .sljp-dom-modal-card { width: min(460px, calc(100vw - 40px)); display: grid; gap: 13px; padding: 22px; border-radius: 12px; color: var(--spice-text); background: var(--spice-card); box-shadow: 0 20px 70px rgba(0,0,0,.65); }
+            .sljp-dom-modal-card h2, .sljp-dom-modal-card p { margin: 0; }
+            .sljp-dom-modal-card p { color: var(--spice-subtext); line-height: 1.5; }
+            .sljp-dom-modal-card label { display: grid; gap: 5px; }
+            .sljp-dom-modal-card input { box-sizing: border-box; width: 100%; border: 1px solid var(--spice-button-disabled); border-radius: 6px; padding: 9px 10px; color: var(--spice-text); background: var(--spice-main); outline: none; }
+            .sljp-dom-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+            .sljp-dom-modal-actions button { border: 0; border-radius: 999px; padding: 8px 12px; color: var(--spice-text); background: var(--spice-button-disabled); cursor: pointer; }
         `;
         document.head.appendChild(style);
     }
 
+    function domButton(text, onClick) {
+        const button = document.createElement("button");
+        button.textContent = text;
+        button.addEventListener("click", onClick);
+        return button;
+    }
+
+    function findSpotifyRightSidebar(drawer) {
+        const selectors = [
+            ".Root__right-sidebar",
+            '[class*="Root__right-sidebar"]',
+            '[data-testid="right-sidebar"]',
+            '[class*="right-sidebar"]',
+            '[class*="rightSidebar"]'
+        ];
+        for (const selector of selectors) {
+            const element = document.querySelector(selector);
+            if (!element || element === drawer || drawer.contains(element)) continue;
+            const rect = element.getBoundingClientRect();
+            if (rect.width >= 220 && rect.height >= 350 && rect.right >= window.innerWidth - 80) return element;
+        }
+        const candidates = [...document.querySelectorAll('aside, [class*="nowPlayingView"], [data-testid*="now-playing"]')];
+        return candidates.find((element) => {
+            if (element === drawer || drawer.contains(element)) return false;
+            const rect = element.getBoundingClientRect();
+            return rect.width >= 220 && rect.height >= 350 && rect.right >= window.innerWidth - 80;
+        }) || null;
+    }
+
+    function positionFallbackPanel(drawer, toggle) {
+        const viewportWidth = window.innerWidth || document.documentElement.clientWidth;
+        const sidebar = findSpotifyRightSidebar(drawer);
+        const sidebarRect = sidebar?.getBoundingClientRect();
+        const sidebarLeft = sidebarRect?.left > viewportWidth * 0.5
+            ? sidebarRect.left
+            : viewportWidth - Math.min(360, viewportWidth * 0.24);
+        const availableRightEdge = sidebarLeft - 10;
+        const minimumWidth = 310;
+
+        if (viewportWidth >= 900 && availableRightEdge >= minimumWidth + 16) {
+            const width = Math.min(400, availableRightEdge - 16);
+            const left = Math.max(8, availableRightEdge - width);
+            drawer.style.left = `${left}px`;
+            drawer.style.right = "auto";
+            drawer.style.width = `${width}px`;
+            toggle.style.left = `${Math.max(12, availableRightEdge - 92)}px`;
+            toggle.style.right = "auto";
+        } else {
+            drawer.style.left = "auto";
+            drawer.style.right = "8px";
+            drawer.style.width = "min(400px, calc(100vw - 24px))";
+            toggle.style.left = "auto";
+            toggle.style.right = "20px";
+        }
+    }
+
+    function mountFallbackPanel() {
+        document.getElementById("sljp-fallback-panel")?.remove();
+        document.getElementById("sljp-fallback-toggle")?.remove();
+
+        const drawer = document.createElement("section");
+        drawer.id = "sljp-fallback-panel";
+        drawer.className = "sljp-fallback-panel";
+        const toggle = domButton("歌詞JP", () => {
+            drawer.style.display = drawer.style.display === "none" ? "block" : "none";
+        });
+        toggle.id = "sljp-fallback-toggle";
+        toggle.className = "sljp-fallback-toggle";
+        document.body.append(drawer, toggle);
+        positionFallbackPanel(drawer, toggle);
+        window.addEventListener("resize", () => positionFallbackPanel(drawer, toggle));
+        setInterval(() => positionFallbackPanel(drawer, toggle), 2000);
+
+        let lastSnapshot = null;
+        const render = (snapshot) => {
+            const onlyPlaybackPositionChanged = lastSnapshot &&
+                snapshot.lines === lastSnapshot.lines &&
+                snapshot.track === lastSnapshot.track &&
+                snapshot.entry === lastSnapshot.entry &&
+                snapshot.settings === lastSnapshot.settings &&
+                snapshot.loading === lastSnapshot.loading &&
+                snapshot.status === lastSnapshot.status &&
+                snapshot.error === lastSnapshot.error;
+
+            if (onlyPlaybackPositionChanged) {
+                drawer.querySelector(".sljp-line.active")?.classList.remove("active");
+                const active = snapshot.activeIndex >= 0
+                    ? drawer.querySelector(`[data-line-index="${snapshot.activeIndex}"]`)
+                    : null;
+                active?.classList.add("active");
+                if (snapshot.settings.autoScroll) {
+                    scrollActiveLine(drawer.querySelector(".sljp-lines"), active);
+                }
+                lastSnapshot = snapshot;
+                return;
+            }
+
+            const root = document.createElement("div");
+            root.className = "sljp-root";
+
+            const header = document.createElement("div");
+            header.className = "sljp-fallback-header";
+            const track = document.createElement("div");
+            track.className = "sljp-track";
+            track.textContent = snapshot.track ? `${snapshot.track.title} — ${snapshot.track.artist}` : "Spotify Lyrics JP";
+            track.title = track.textContent;
+            const close = domButton("×", () => { drawer.style.display = "none"; });
+            close.className = "sljp-fallback-close";
+            header.append(track, close);
+            root.appendChild(header);
+
+            const toolbar = document.createElement("div");
+            toolbar.className = "sljp-toolbar";
+            const reload = domButton("再取得", () => loadTrack({ force: true }));
+            reload.disabled = snapshot.loading;
+            const alternate = domButton("別ソース", () => loadTrack({ alternate: true }));
+            alternate.disabled = snapshot.loading || !snapshot.entry;
+            const mode = document.createElement("select");
+            for (const [value, text] of [["free", "無料翻訳"], ["gemini", "Gemini自然訳"], ["deepl", "DeepL翻訳"], ["openai", "GPT自然訳"]]) {
+                const option = document.createElement("option");
+                option.value = value;
+                option.textContent = text;
+                mode.appendChild(option);
+            }
+            mode.value = snapshot.settings.translationMode;
+            mode.disabled = snapshot.loading;
+            mode.addEventListener("change", changeMode);
+            toolbar.append(reload, alternate, mode, domButton("API設定", showSettingsDialog));
+
+            for (const [key, text] of [["showOriginal", "原文"], ["autoScroll", "自動スクロール"]]) {
+                const label = document.createElement("label");
+                label.className = "sljp-check";
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.checked = snapshot.settings[key];
+                checkbox.addEventListener("change", () => toggleSetting(key, checkbox.checked));
+                label.append(checkbox, document.createTextNode(text));
+                toolbar.appendChild(label);
+            }
+            root.appendChild(toolbar);
+
+            const lines = document.createElement("div");
+            lines.className = "sljp-lines";
+            if (snapshot.loading) {
+                const empty = document.createElement("div");
+                empty.className = "sljp-empty";
+                empty.textContent = "検索・翻訳中…";
+                lines.appendChild(empty);
+            } else if (!snapshot.lines.length) {
+                const empty = document.createElement("div");
+                empty.className = "sljp-empty";
+                empty.textContent = snapshot.error ? "「再取得」で再試行できます。" : "曲を再生すると歌詞を表示します。";
+                lines.appendChild(empty);
+            } else {
+                snapshot.lines.forEach((line, index) => {
+                    const item = document.createElement("div");
+                    item.className = `sljp-line${index === snapshot.activeIndex ? " active" : ""}`;
+                    item.dataset.lineIndex = String(index);
+                    if (snapshot.settings.showOriginal && line.original !== line.translation) {
+                        const original = document.createElement("div");
+                        original.className = "sljp-original";
+                        original.textContent = line.original;
+                        item.appendChild(original);
+                    }
+                    const translation = document.createElement("div");
+                    translation.className = "sljp-translation";
+                    translation.textContent = line.translation || line.original || "（和訳を取得できませんでした）";
+                    item.appendChild(translation);
+                    lines.appendChild(item);
+                });
+            }
+            root.appendChild(lines);
+
+            const status = document.createElement("div");
+            status.className = `sljp-status${snapshot.error ? " error" : ""}`;
+            status.textContent = snapshot.status;
+            root.appendChild(status);
+
+            drawer.replaceChildren(root);
+            if (snapshot.settings.autoScroll && snapshot.activeIndex >= 0) {
+                scrollActiveLine(lines, lines.querySelector(`[data-line-index="${snapshot.activeIndex}"]`), "auto");
+            }
+            lastSnapshot = snapshot;
+        };
+        subscribe(render);
+        render(state);
+        return { toggle: () => { toggle.click(); } };
+    }
+
     injectStyles();
 
-    const panel = Spicetify.Panel.registerPanel({
-        label: "歌詞JP",
-        children: h(LyricsPanel)
-    });
-    const icon = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 3v11.3A4 4 0 1 0 11 18V7h8V3H9Zm-2 17a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/></svg>`;
-    new Spicetify.Topbar.Button("歌詞JP", icon, () => panel.toggle());
+    let panel;
+    let nativePanel = false;
+    if (Spicetify.Panel?.registerPanel && Spicetify.Topbar?.Button) {
+        panel = Spicetify.Panel.registerPanel({
+            label: "歌詞JP",
+            children: h(LyricsPanel)
+        });
+        const icon = `<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 3v11.3A4 4 0 1 0 11 18V7h8V3H9Zm-2 17a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/></svg>`;
+        new Spicetify.Topbar.Button("歌詞JP", icon, () => panel.toggle());
+        nativePanel = true;
+    } else {
+        panel = mountFallbackPanel();
+        console.warn("[SpotifyLyricsJP] Panel APIがないため互換パネルを使用します");
+    }
 
     Spicetify.Player.addEventListener("songchange", () => {
         setTimeout(() => loadTrack(), 250);
@@ -906,13 +1200,15 @@
             isCandidateSafe,
             selectBestCandidate,
             parseLyrics,
-            getNormalLyrics
+            getNormalLyrics,
+            setTestState: (patch) => setState(patch),
+            getTestState: () => state
         });
     }
 
     setTimeout(() => {
         loadTrack();
-        Spicetify.Panel.setPanel(panel.id).catch(() => {});
+        if (nativePanel) Spicetify.Panel.setPanel(panel.id).catch(() => {});
     }, 500);
 
     console.info(`[SpotifyLyricsJP] v${VERSION} loaded`);

@@ -1,8 +1,8 @@
-# Spotify Lyrics JP v2.0.2 — Spotify内蔵版
+# Spotify Lyrics JP v2.0.6 — Spotify内蔵版
 
 Spotify公式サイトからインストールしたWindows版Spotifyへ、日本語訳付きの同期歌詞パネルを追加します。歌詞はSpotifyの右側に表示されるため、別ウィンドウを並べる必要はありません。
 
-[Spotify Lyrics JP v2.0.2をダウンロード](https://github.com/Nirvana10151029/SpotifyLyricsJP/raw/refs/heads/main/SpotifyLyricsJP-Spicetify-2.0.2.zip)
+[Spotify Lyrics JP v2.0.6をダウンロード](https://github.com/Nirvana10151029/SpotifyLyricsJP/raw/refs/heads/main/SpotifyLyricsJP-Spicetify-2.0.6.zip)
 
 ## 導入方法
 
@@ -49,6 +49,9 @@ GPT自然訳はOpenAI Responses APIとGPT-5.6 Solを使用します。ChatGPT Pl
 ## うまく動かないとき
 
 - Spotify更新後に消えた場合：Spotifyを終了して `START-INSTALL.bat` をもう一度実行します。
+- セットアップが成功表示なのに「歌詞JP」が出ない場合：v2.0.6の `START-INSTALL.bat` を実行します。必要な拡張機能を再適用します。
+- Spotify側の更新で右パネルAPIが使えない場合：自動で互換パネルへ切り替わり、右下の緑色の「歌詞JP」ボタンから開閉できます。
+- 互換パネルはSpotify本来の右側パネルを検出し、その左隣へ自動配置します。アーティスト画像・アルバム情報・Canvas表示を隠しません。
 - パネルを閉じた場合：Spotify上部の音符ボタンを押します。
 - 歌詞取得に失敗した場合：通信状態を確認し、少し待ってから `再取得` を押します。
 - 歌詞が違う場合：`別ソース` を押します。
