@@ -7,7 +7,7 @@
         return;
     }
 
-    const VERSION = "2.0.0";
+    const VERSION = "2.0.1";
     const STORAGE_KEY = "spotify-lyrics-jp:settings";
     const CACHE_LIMIT = 30;
     const REQUEST_TIMEOUT_MS = 25000;

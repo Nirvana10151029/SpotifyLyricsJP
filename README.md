@@ -1,15 +1,15 @@
-# Spotify Lyrics JP v2 — Spotify内蔵版
+# Spotify Lyrics JP v2.0.1 — Spotify内蔵版
 
 Spotify公式サイトからインストールしたWindows版Spotifyへ、日本語訳付きの同期歌詞パネルを追加します。歌詞はSpotifyの右側に表示されるため、別ウィンドウを並べる必要はありません。
 
-[Spotify Lyrics JP v2.0.0をダウンロード](https://github.com/Nirvana10151029/SpotifyLyricsJP/raw/refs/heads/main/SpotifyLyricsJP-Spicetify-2.0.0.zip)
+[Spotify Lyrics JP v2.0.1をダウンロード](https://github.com/Nirvana10151029/SpotifyLyricsJP/raw/refs/heads/main/SpotifyLyricsJP-Spicetify-2.0.1.zip)
 
 ## 導入方法
 
 1. Microsoft Store版Spotifyを使っている場合はアンインストールします。
 2. [Spotify公式サイト](https://www.spotify.com/jp/download/windows/)からWindows版をインストールし、一度ログインして終了します。
 3. このZIPを右クリックして「すべて展開」します。
-4. 展開したフォルダの `INSTALL.bat` をダブルクリックします。
+4. 展開したフォルダの `START-INSTALL.bat` をダブルクリックします。
 5. 自動で開いたSpotifyの右側に「歌詞JP」が表示されれば完了です。
 
 Spicetifyが未導入の場合は、Windows標準のwingetを使って自動導入します。閉じた歌詞パネルは、Spotify上部の音符ボタンから再表示できます。
@@ -48,11 +48,11 @@ GPT自然訳はOpenAI Responses APIとGPT-5.6 Solを使用します。ChatGPT Pl
 
 ## うまく動かないとき
 
-- Spotify更新後に消えた場合：Spotifyを終了して `INSTALL.bat` をもう一度実行します。
+- Spotify更新後に消えた場合：Spotifyを終了して `START-INSTALL.bat` をもう一度実行します。
 - パネルを閉じた場合：Spotify上部の音符ボタンを押します。
 - 歌詞取得に失敗した場合：通信状態を確認し、少し待ってから `再取得` を押します。
 - 歌詞が違う場合：`別ソース` を押します。
-- 完全に取り外す場合：`UNINSTALL.bat` を実行します。
+- 完全に取り外す場合：`START-UNINSTALL.bat` を実行します。
 
 ## 必要環境
 

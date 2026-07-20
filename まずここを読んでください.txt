@@ -8,7 +8,7 @@ Spotify Lyrics JP v2（Spotify内蔵版）
 2. https://www.spotify.com/jp/download/windows/ からSpotifyをインストール
 3. Spotifyへ一度ログインして終了
 4. ZIPを「すべて展開」
-5. INSTALL.batをダブルクリック
+5. START-INSTALL.batをダブルクリック
 
 使い方
 - 曲が変わると歌詞も自動で変わります
@@ -21,7 +21,9 @@ Spotify Lyrics JP v2（Spotify内蔵版）
 同期情報のない歌詞が先に見つかっても検索を続け、正しく照合できた同期歌詞があれば自動でそちらへ入れ替えます。
 取得失敗後の無限再試行は行いません。
 
-完全に取り外す場合はUNINSTALL.batを実行してください。
+完全に取り外す場合はSTART-UNINSTALL.batを実行してください。
+
+START-INSTALL.bat以外の .js / .ps1 ファイルは直接開かないでください。
 
 注意
 - ChatGPT PlusとOpenAI APIの料金は別です
