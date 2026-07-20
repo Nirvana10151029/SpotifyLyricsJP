@@ -24,9 +24,28 @@ function Invoke-Spicetify {
     }
 }
 
+function Invoke-SpicetifyApply {
+    Write-Host ''
+    Write-Host 'Spotifyへ変更を適用します…' -ForegroundColor Cyan
+    & $script:Spicetify apply
+    if ($LASTEXITCODE -eq 0) { return }
+
+    Write-Host ''
+    Write-Host '初回用のバックアップを作成して再試行します…' -ForegroundColor Yellow
+    & $script:Spicetify backup apply
+    if ($LASTEXITCODE -eq 0) { return }
+
+    Write-Host ''
+    Write-Host '既存のバックアップを復元してから再適用します…' -ForegroundColor Yellow
+    & $script:Spicetify restore backup apply
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Spicetifyの適用に失敗しました。Spotifyを再インストールしてからもう一度お試しください。'
+    }
+}
+
 try {
     Write-Host ''
-    Write-Host 'Spotify Lyrics JP v2.0.1 セットアップ' -ForegroundColor Cyan
+    Write-Host 'Spotify Lyrics JP v2.0.2 セットアップ' -ForegroundColor Cyan
     Write-Host '----------------------------------------' -ForegroundColor DarkGray
 
     $spotifyExe = Join-Path $env:APPDATA 'Spotify\Spotify.exe'
@@ -77,7 +96,8 @@ try {
     Copy-Item -LiteralPath $extensionSource -Destination (Join-Path $extensionDirectory 'spotifyLyricsJP.js') -Force
 
     Invoke-Spicetify -Arguments @('config', 'extensions', 'spotifyLyricsJP.js')
-    Invoke-Spicetify -Arguments @('backup', 'apply')
+    Invoke-Spicetify -Arguments @('config', 'expose_apis', '1')
+    Invoke-SpicetifyApply
 
     Write-Host ''
     Write-Host 'インストール完了です。Spotifyを起動します。' -ForegroundColor Green

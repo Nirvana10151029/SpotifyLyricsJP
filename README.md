@@ -1,8 +1,8 @@
-# Spotify Lyrics JP v2.0.1 — Spotify内蔵版
+# Spotify Lyrics JP v2.0.2 — Spotify内蔵版
 
 Spotify公式サイトからインストールしたWindows版Spotifyへ、日本語訳付きの同期歌詞パネルを追加します。歌詞はSpotifyの右側に表示されるため、別ウィンドウを並べる必要はありません。
 
-[Spotify Lyrics JP v2.0.1をダウンロード](https://github.com/Nirvana10151029/SpotifyLyricsJP/raw/refs/heads/main/SpotifyLyricsJP-Spicetify-2.0.1.zip)
+[Spotify Lyrics JP v2.0.2をダウンロード](https://github.com/Nirvana10151029/SpotifyLyricsJP/raw/refs/heads/main/SpotifyLyricsJP-Spicetify-2.0.2.zip)
 
 ## 導入方法
 

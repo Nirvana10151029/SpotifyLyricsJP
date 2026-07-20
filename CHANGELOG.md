@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.2 — 2026-07-20
+
+- 既存のSpicetifyバックアップがある環境で `backup apply` が停止する問題を修正
+- 通常の `apply`、初回用 `backup apply`、既存バックアップ復旧用 `restore backup apply` の順で自動復旧
+- 拡張機能が利用するSpicetify APIを明示的に有効化
+
 ## 2.0.1 — 2026-07-20
 
 - Windowsのコマンド画面で起動用BATが壊れて読まれる問題を修正
