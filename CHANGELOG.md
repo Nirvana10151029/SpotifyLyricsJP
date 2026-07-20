@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.0.0 — 2026-07-20
+
+- Spotify公式サイト版とSpicetifyに対応し、別ウィンドウからSpotify右側の内蔵パネルへ変更
+- 再生曲の自動検出、同期ハイライト、自動スクロールをSpicetify Player APIへ移植
+- LRCLIBで通常歌詞しか見つからない場合も検索を続け、別候補またはLyricaの同期歌詞を自動優先
+- LRCLIB、Lyrica経由のYouTube Music・NetEase・Megalobiz・Musixmatch・SimpMusic、Lyrics.ovhに対応
+- 曲名・アーティスト・アルバム・再生時間の照合と、45秒以上異なる候補の除外を移植
+- 「再取得」と「別ソース」をSpotify内蔵パネルへ追加
+- 取得失敗後は自動再試行せず、曲変更または手動操作まで停止するよう実装
+- 無料翻訳、Gemini、DeepL、GPTの切り替えとAPI設定画面を移植
+- Gemini・GPTは行ID付きJSONを検証し、歌詞行の結合・省略による同期ずれを防止
+- DeepL API Free/Proのエンドポイントをキーから自動判定
+- GPT自然訳をGPT-5.6 SolとResponses APIの構造化出力に更新
+- AI翻訳失敗時の無料翻訳フォールバックを実装
+- Web版Spotify・Spicetify・拡張機能を確認して導入するWindows用インストーラーを追加
+- 拡張機能だけを安全に取り外すアンインストーラーを追加
+
 ## 1.4.1 — 2026-07-19
 
 - LRCLIBで同期情報のない通常歌詞が見つかっても、すぐには確定せず同期歌詞の検索を続けるよう変更

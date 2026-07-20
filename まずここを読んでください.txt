@@ -1,44 +1,29 @@
-Spotify Lyrics JP（Windows Store版Spotify用）
+Spotify Lyrics JP v2（Spotify内蔵版）
 
-これはSpotifyの中に入る改造ではなく、Spotifyの横に表示する専用ウィンドウです。
-Store版Spotifyをそのまま使えます。
+この版はMicrosoft Store版ではなく、Spotify公式サイトから入れたWindows版に対応します。
+歌詞をSpotify右側へ表示するため、別ウィンドウは必要ありません。
+
+導入手順
+1. Store版Spotifyを使っている場合はアンインストール
+2. https://www.spotify.com/jp/download/windows/ からSpotifyをインストール
+3. Spotifyへ一度ログインして終了
+4. ZIPを「すべて展開」
+5. INSTALL.batをダブルクリック
 
 使い方
-1. Spotifyで曲を再生する
-2. RUN.bat をダブルクリックする
-3. 小さい歌詞ウィンドウをSpotifyの横に置く
+- 曲が変わると歌詞も自動で変わります
+- パネルを閉じた場合はSpotify上部の音符ボタンを押します
+- 歌詞が違う場合は「別ソース」を押します
+- 取得エラー時は少し待って「再取得」を押します
+- 無料翻訳はAPIキー不要です
+- Gemini・DeepL・GPTは「API設定」から各APIキーを入力します
 
-同期情報のない歌詞が見つかった場合は、LRCLIB内の別候補と他サービスの同期歌詞を自動で探し、見つかれば入れ替えます。
-歌詞が別の曲のものだった場合は「別ソース」を押してください。LRCLIB以外の同期歌詞を探します。
-通常の検索へ戻すときは「再取得」を押してください。
+同期情報のない歌詞が先に見つかっても検索を続け、正しく照合できた同期歌詞があれば自動でそちらへ入れ替えます。
+取得失敗後の無限再試行は行いません。
 
-翻訳の選び方
-- 「無料翻訳」: 設定なしで使えます
-- 「Gemini自然訳」: 文脈を踏まえた自然な訳です
-- 「DeepL翻訳」: 原文への忠実さと安定性を重視します。DeepL API Freeも使えます
-- 「GPT自然訳」: 比喩・スラング・歌詞全体の物語を重視します
-- 初めて選ぶとAPIキー入力画面が開きます
-- キーを変更するときは「API設定」を押してください
-- 各サービスが一時的に失敗した場合は、自動で無料翻訳に戻ります
+完全に取り外す場合はUNINSTALL.batを実行してください。
 
-APIキー作成先
-- Gemini: https://aistudio.google.com/app/apikey
-- DeepL: https://www.deepl.com/ja/pro-api
-- GPT: https://platform.openai.com/api-keys
-
-注意: ChatGPT PlusとOpenAI APIの料金は別です。GPT自然訳にはOpenAI Platform側のAPI利用枠が必要です。
-
-必要なもの
-- Windows 10/11
-- Microsoft Store版Spotify
-- インターネット
-
-不要なもの
-- Spotify Cookie（sp_dc）
-- Spotify開発者登録
-- APIキー（無料翻訳の場合）
-
-歌詞はLRCLIBとLyricaの同期歌詞を優先し、同期版がない場合はLRCLIBまたはLyrics.ovhの通常歌詞を表示します。
-曲名・アーティスト名はLRCLIB、Lyrica、Lyrics.ovhへ送信されます。歌詞本文は、選んだ方式に応じて無料翻訳サービス、Google Gemini API、DeepL API、OpenAI APIへ送信されますが、Spotifyのログイン情報は一切送られません。
-
-起動しない場合は DIAGNOSE.bat を実行してください。
+注意
+- ChatGPT PlusとOpenAI APIの料金は別です
+- APIキーはSpotifyのローカル領域へ保存されますが、Spicetify版では暗号化されません
+- 共用PCではAI翻訳を使わないか、使用後にキーを空欄へ戻してください

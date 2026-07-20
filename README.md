@@ -1,81 +1,71 @@
-# Spotify Lyrics JP — Windows Store版対応
+# Spotify Lyrics JP v2 — Spotify内蔵版
 
-Windows Store版のSpotifyで再生中の曲を検出し、英語などの歌詞を日本語と並べて出す、小さな別ウィンドウのアプリです。同期情報のない歌詞が先に見つかった場合も検索を続け、LRCLIB内の別候補やLyricaの同期歌詞があれば自動でそちらを採用します。
+Spotify公式サイトからインストールしたWindows版Spotifyへ、日本語訳付きの同期歌詞パネルを追加します。歌詞はSpotifyの右側に表示されるため、別ウィンドウを並べる必要はありません。
 
-Spotify本体は変更しません。SpotifyのCookie、`sp_dc`、Spotify開発者登録は不要です。無料翻訳はAPIキーなしで使えます。Gemini・DeepL・GPTを使う場合だけ、選んだサービスのAPIキーが必要です。
+[Spotify Lyrics JP v2.0.0をダウンロード](https://github.com/Nirvana10151029/SpotifyLyricsJP/raw/refs/heads/main/SpotifyLyricsJP-Spicetify-2.0.0.zip)
 
-## 使い方
+## 導入方法
 
-1. このフォルダを展開する。
-2. Microsoft Store版Spotifyで曲を再生する。
-3. `RUN.bat` をダブルクリックする。
-4. 開いたウィンドウをSpotifyの横に置く。
+1. Microsoft Store版Spotifyを使っている場合はアンインストールします。
+2. [Spotify公式サイト](https://www.spotify.com/jp/download/windows/)からWindows版をインストールし、一度ログインして終了します。
+3. このZIPを右クリックして「すべて展開」します。
+4. 展開したフォルダの `INSTALL.bat` をダブルクリックします。
+5. 自動で開いたSpotifyの右側に「歌詞JP」が表示されれば完了です。
 
-動作確認のため黒い画面も開いたままになります。これは正常です。起動に失敗した場合はエラー画面が残り、`Startup.log` が自動的に開きます。
+Spicetifyが未導入の場合は、Windows標準のwingetを使って自動導入します。閉じた歌詞パネルは、Spotify上部の音符ボタンから再表示できます。
 
-初回は曲の歌詞検索と和訳に少し時間がかかります。曲が変わると自動で切り替わります。
+## 主な機能
 
-### 翻訳を切り替える
+- 曲が変わるとSpotify内の歌詞パネルを自動更新
+- 同期歌詞に合わせて現在行をハイライトし、自動スクロール
+- LRCLIBの通常歌詞しか見つからなくても検索を続け、別候補や他サービスに同期歌詞があれば自動で入れ替え
+- LRCLIB、YouTube Music、NetEase、Megalobiz、Musixmatch、SimpMusic、Lyrics.ovhを検索
+- 曲名・アーティスト・アルバム・再生時間を照合し、同名の別楽曲や違うバージョンを除外
+- 歌詞が違う場合は「別ソース」で別サービスへ切り替え
+- 失敗した曲を無限に再検索せず、「再取得」を押したときだけ再試行
+- 無料翻訳、Gemini自然訳、DeepL翻訳、GPT自然訳を画面から切り替え
+- 原文表示・自動スクロールを切り替え
 
-- `無料翻訳`：設定なしですぐ使えます。従来どおりの機械翻訳です。
-- `Gemini自然訳`：前後の歌詞をまとめて読み、Geminiが自然な日本語にします。
-- `DeepL翻訳`：訳の安定性と原文への忠実さを重視します。DeepL API Freeにも対応します。
-- `GPT自然訳`：GPT-5.6 Terraで歌詞の物語・比喩・スラングを重視した自然訳を作ります。
-- 初めて各方式を選ぶと、そのサービスのAPIキー入力画面が開きます。キーはWindowsのユーザー単位暗号化でPC内に保存されます。
-- キーを変更するときは `API設定` を押します。
-- 選んだサービスが一時的に使えない場合は、自動で無料翻訳へ切り替え、ステータス欄に `一部無料訳` と表示します。
+## 翻訳の設定
 
-APIキーの作成先：
+`無料翻訳` は設定なしで利用できます。
+
+Gemini・DeepL・GPTを使う場合は、歌詞パネルの `API設定` を押し、利用するサービスのAPIキーを入力してください。
 
 - Gemini：[Google AI Studio](https://aistudio.google.com/app/apikey)
-- DeepL：[DeepL API](https://www.deepl.com/ja/pro-api)
+- DeepL：[DeepL API](https://www.deepl.com/ja/your-account/keys)
 - GPT：[OpenAI Platform](https://platform.openai.com/api-keys)
 
-ChatGPT Plusの料金にOpenAI API利用料は含まれません。GPT自然訳にはOpenAI Platform側でAPIの支払い設定・利用枠が必要です。
+GPT自然訳はOpenAI Responses APIとGPT-5.6 Solを使用します。ChatGPT PlusとOpenAI APIの料金は別です。選択したAI翻訳が失敗した場合は、その曲の残りを無料翻訳へ自動で切り替えます。
 
-## できること
+## APIキーとプライバシー
 
-- Windowsのメディア再生情報から、Store版Spotifyの曲名・アーティスト・再生位置を読む
-- 公開歌詞サービス LRCLIB から歌詞を取得
-- LRCLIBの結果に同期情報がない場合も、LRCLIB内の別候補とLyrica経由のYouTube Music、NetEase、Megalobiz、Musixmatch、SimpMusicを自動検索
-- 正しく照合できた同期歌詞があれば自動で入れ替え、どこにもない場合だけ通常歌詞を表示
-- LRCLIBに通常歌詞も無い場合はLyrics.ovhを検索
-- 曲名だけでなく再生時間とアルバムも照合し、同名の別楽曲を除外
-- 歌詞が違う場合に「別ソース」ボタンでLRCLIB以外の同期歌詞へ切り替え
-- 原文と日本語を並べて表示
-- 無料翻訳・Gemini・DeepL・GPTを画面から切り替え
-- タイムスタンプ付き歌詞がある曲では、現在行のハイライトと自動スクロール
-- 「常に手前」「原文を表示」「自動スクロール」をその場で切替
-
-## 必要なもの
-
-- Windows 10 version 1809 以降、または Windows 11
-- Microsoft Store版Spotify
-- インターネット接続
-- Gemini・DeepL・GPTを使う場合のみ、各サービスのAPIキー
-
-## 大事な注意
-
-- Spotify内部の歌詞を直接取り出す方式ではありません。Spotifyを改造せず、Windowsが共有する再生情報だけを使います。
-- 歌詞はLRCLIB、Lyricaが参照する各サービス、またはLyrics.ovhにある曲だけ表示できます。曲によっては歌詞がない、違う版が出る、同期しない場合があります。
-- 曲名・アーティスト名は歌詞検索のためLRCLIB、Lyrica、Lyrics.ovhへ送信されます。歌詞本文は選んだ翻訳方式に応じて無料翻訳サービス、Google Gemini API、DeepL API、OpenAI APIのいずれかへ送信します。アカウント情報やSpotifyのCookieは送信しません。
-- 各APIキーは `%LOCALAPPDATA%\SpotifyLyricsJPStore\settings.json` にWindowsのユーザー単位暗号化で保存され、ログには記録しません。
-- 自動和訳なので、DeepLやGPTでも固有名詞・比喩・スラングを誤訳することがあります。
-- DeepLとOpenAIの利用枠・料金は各社の契約内容によります。
+- APIキーはこのPCのSpotify用ローカルストレージに保存されます。
+- Spicetify版ではWindowsの暗号化機能を直接利用できないため、キーは暗号化されません。共用PCではAI翻訳を使わないか、利用後にキーを空欄で保存してください。
+- 曲名・アーティスト・アルバム・再生時間は歌詞検索サービスへ送信されます。
+- 歌詞本文は選択した翻訳サービスへ送信されます。
+- SpotifyのCookie、ログイン情報、認証トークンを外部の歌詞・翻訳サービスへ送信する処理はありません。
 
 ## うまく動かないとき
 
-1. Spotifyで曲を再生した状態で `DIAGNOSE.bat` をダブルクリック。
-2. `Spotify 再生セッション` が「OK」になるか確認。
-3. 「確認」と出る行のスクリーンショットを送る。
+- Spotify更新後に消えた場合：Spotifyを終了して `INSTALL.bat` をもう一度実行します。
+- パネルを閉じた場合：Spotify上部の音符ボタンを押します。
+- 歌詞取得に失敗した場合：通信状態を確認し、少し待ってから `再取得` を押します。
+- 歌詞が違う場合：`別ソース` を押します。
+- 完全に取り外す場合：`UNINSTALL.bat` を実行します。
 
-起動中のエラーは次のログに出ます。
+## 必要環境
 
-`%LOCALAPPDATA%\SpotifyLyricsJPStore\SpotifyLyricsJPStore.log`
+- Windows 10/11
+- Spotify公式サイトからインストールしたWindows版Spotify
+- インターネット接続
+- [Spicetify](https://spicetify.app/)（未導入ならインストーラーがwingetで導入）
 
-## 仕組み
+## 注意
 
-SpotifyがWindowsに公開する再生セッションから曲名と再生位置を取得します。同期歌詞はLRCLIBとLyricaを優先し、同期版がない場合はLRCLIBまたはLyrics.ovhの通常歌詞を使います。和訳は無料翻訳、Gemini、DeepL、GPTから選べます。どの方式でもStore版Spotifyのファイルを触ったり、ログイン情報を抽出したりしません。
+Spotify、Spicetify、各歌詞・翻訳サービスの非公式ツールです。各サービスの仕様変更やSpotify更新により、一時的に動作しなくなる場合があります。歌詞の権利は各権利者に帰属し、この配布物に歌詞そのものは収録していません。
+
+Microsoft Store版を使い続ける場合は、別ウィンドウ型の[旧版v1.4.1](https://github.com/Nirvana10151029/SpotifyLyricsJP/raw/refs/heads/main/SpotifyLyricsJP-1.4.1.zip)も残しています。
 
 ## ライセンス
 
