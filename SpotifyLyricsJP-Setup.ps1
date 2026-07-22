@@ -40,7 +40,7 @@ function Invoke-SpicetifyApply {
 
 try {
     Write-Host ''
-    Write-Host 'Spotify Lyrics JP v2.0.6 セットアップ' -ForegroundColor Cyan
+    Write-Host 'Spotify Lyrics JP v2.0.10 セットアップ' -ForegroundColor Cyan
     Write-Host '----------------------------------------' -ForegroundColor DarkGray
 
     $spotifyExe = Join-Path $env:APPDATA 'Spotify\Spotify.exe'
