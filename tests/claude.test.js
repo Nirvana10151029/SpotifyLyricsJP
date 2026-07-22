@@ -3,6 +3,10 @@
 const assert = require("node:assert/strict");
 const path = require("node:path");
 
+if (process.env.SLJP_FAKE_INDEXEDDB === "1") {
+    global.indexedDB = require("fake-indexeddb").indexedDB;
+}
+
 global.__SLJP_TEST_MODE = true;
 global.document = {
     getElementById: () => null,
@@ -70,6 +74,7 @@ const track = { key: "spotify:track:test", title: "Example Song", artist: "Examp
 
 (async () => {
     assert.equal(api.claudeModel, "claude-haiku-4-5-20251001");
+    assert.equal(api.translationCacheLimit, 10000);
     assert.equal(api.missingKeyForMode("claude"), false);
 
     const lines = Array.from({ length: 30 }, (_, index) => ({
@@ -98,11 +103,26 @@ const track = { key: "spotify:track:test", title: "Example Song", artist: "Examp
     assert.equal(lastRequest.body.output_config.format.type, "json_schema");
 
     const cacheKey = api.getTranslationCacheKey(track, "claude", lines);
-    api.cacheTranslation(cacheKey, translated);
-    const cached = api.getCachedTranslation(cacheKey, lines);
+    await api.cacheTranslation(cacheKey, translated);
+    const cached = await api.getCachedTranslation(cacheKey, lines);
     assert.equal(cached.lines[0].translation, "訳:Line 0");
     assert.match(cached.engine, /キャッシュ/);
-    assert.ok(local.get("spotify-lyrics-jp:translation-cache:v1"), "翻訳キャッシュを端末へ保存する");
+    if (global.indexedDB) {
+        const db = await new Promise((resolve, reject) => {
+            const request = global.indexedDB.open("spotify-lyrics-jp-cache", 1);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+        const record = await new Promise((resolve, reject) => {
+            const request = db.transaction("translations", "readonly").objectStore("translations").get(cacheKey);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+        assert.equal(record.translations[0], "訳:Line 0", "IndexedDBへ翻訳を保存する");
+        db.close();
+    } else {
+        assert.ok(local.get("spotify-lyrics-jp:translation-cache:v1"), "IndexedDB非対応時は小容量キャッシュへ保存する");
+    }
 
     console.log("Spotify Lyrics JP Claude tests passed.");
 })().catch((error) => {

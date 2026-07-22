@@ -1,4 +1,4 @@
-Spotify Lyrics JP v2.0.11（Spotify内蔵版）
+Spotify Lyrics JP v2.0.12（Spotify内蔵版）
 
 この版はMicrosoft Store版ではなく、Spotify公式サイトから入れたWindows版に対応します。
 歌詞をSpotify右側へ表示するため、別ウィンドウは必要ありません。
@@ -10,7 +10,7 @@ Spotify Lyrics JP v2.0.11（Spotify内蔵版）
 4. ZIPを「すべて展開」
 5. START-INSTALL.batをダブルクリック
 
-以前の版で「完了」と表示されても歌詞JPが出なかった場合も、v2.0.11のSTART-INSTALL.batをそのまま実行してください。
+以前の版で「完了」と表示されても歌詞JPが出なかった場合も、v2.0.12のSTART-INSTALL.batをそのまま実行してください。
 右パネルAPIが使えないSpotifyでは、右下の緑色の「歌詞JP」ボタンから互換パネルを開閉できます。
 
 使い方

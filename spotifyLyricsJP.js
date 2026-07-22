@@ -19,11 +19,14 @@
     }
     delete globalThis.__SLJP_BOOTSTRAP_ATTEMPTS;
 
-    const VERSION = "2.0.11";
+    const VERSION = "2.0.12";
     const STORAGE_KEY = "spotify-lyrics-jp:settings";
     const TRANSLATION_CACHE_KEY = "spotify-lyrics-jp:translation-cache:v1";
+    const TRANSLATION_DB_NAME = "spotify-lyrics-jp-cache";
+    const TRANSLATION_DB_STORE = "translations";
     const CACHE_LIMIT = 40;
-    const TRANSLATION_CACHE_LIMIT = 500;
+    const TRANSLATION_CACHE_LIMIT = 10000;
+    const FALLBACK_TRANSLATION_CACHE_LIMIT = 500;
     const REQUEST_TIMEOUT_MS = 16000;
     const TRANSLATION_TIMEOUT_MS = 65000;
     const LYRICA_TIMEOUT_MS = 8000;
@@ -999,7 +1002,7 @@
         return `${translationModeSignature(mode)}\u001f${track.key}\u001f${hashText(lyricsIdentity)}`;
     }
 
-    function loadTranslationCache() {
+    function loadFallbackTranslationCache() {
         try {
             const stored = Spicetify.LocalStorage.get(TRANSLATION_CACHE_KEY);
             const parsed = stored ? JSON.parse(stored) : [];
@@ -1011,27 +1014,123 @@
         }
     }
 
-    const translationCache = loadTranslationCache();
+    const fallbackTranslationCache = loadFallbackTranslationCache();
 
-    function persistTranslationCache() {
+    function persistFallbackTranslationCache() {
         try {
-            Spicetify.LocalStorage.set(TRANSLATION_CACHE_KEY, JSON.stringify([...translationCache]));
+            Spicetify.LocalStorage.set(TRANSLATION_CACHE_KEY, JSON.stringify([...fallbackTranslationCache]));
         } catch (error) {
             console.warn("[SpotifyLyricsJP] Translation cache save failed; reducing cache", error);
-            while (translationCache.size > Math.floor(TRANSLATION_CACHE_LIMIT / 2)) {
-                translationCache.delete(translationCache.keys().next().value);
+            while (fallbackTranslationCache.size > Math.floor(FALLBACK_TRANSLATION_CACHE_LIMIT / 2)) {
+                fallbackTranslationCache.delete(fallbackTranslationCache.keys().next().value);
             }
-            try { Spicetify.LocalStorage.set(TRANSLATION_CACHE_KEY, JSON.stringify([...translationCache])); }
+            try { Spicetify.LocalStorage.set(TRANSLATION_CACHE_KEY, JSON.stringify([...fallbackTranslationCache])); }
             catch (retryError) { console.warn("[SpotifyLyricsJP] Reduced translation cache save failed", retryError); }
         }
     }
 
-    function getCachedTranslation(key, lines) {
-        const cached = translationCache.get(key);
+    function migrateFallbackCache(db) {
+        if (!fallbackTranslationCache.size) return Promise.resolve();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(TRANSLATION_DB_STORE, "readwrite");
+            const store = transaction.objectStore(TRANSLATION_DB_STORE);
+            for (const [key, cached] of fallbackTranslationCache) {
+                store.put({ key, ...cached, savedAt: Number(cached.savedAt) || Date.now() });
+            }
+            transaction.oncomplete = () => {
+                fallbackTranslationCache.clear();
+                try {
+                    if (typeof Spicetify.LocalStorage.remove === "function") Spicetify.LocalStorage.remove(TRANSLATION_CACHE_KEY);
+                    else Spicetify.LocalStorage.set(TRANSLATION_CACHE_KEY, "[]");
+                } catch {}
+                resolve();
+            };
+            transaction.onerror = () => reject(transaction.error || new Error("旧キャッシュの移行に失敗しました。"));
+            transaction.onabort = () => reject(transaction.error || new Error("旧キャッシュの移行が中断されました。"));
+        });
+    }
+
+    let translationDbPromise = null;
+
+    function openTranslationCacheDb() {
+        if (!globalThis.indexedDB?.open) return Promise.resolve(null);
+        if (translationDbPromise) return translationDbPromise;
+        translationDbPromise = new Promise((resolve) => {
+            const request = globalThis.indexedDB.open(TRANSLATION_DB_NAME, 1);
+            request.onupgradeneeded = () => {
+                const db = request.result;
+                const store = db.objectStoreNames.contains(TRANSLATION_DB_STORE)
+                    ? request.transaction.objectStore(TRANSLATION_DB_STORE)
+                    : db.createObjectStore(TRANSLATION_DB_STORE, { keyPath: "key" });
+                if (!store.indexNames.contains("savedAt")) store.createIndex("savedAt", "savedAt");
+            };
+            request.onsuccess = () => {
+                const db = request.result;
+                db.onversionchange = () => db.close();
+                migrateFallbackCache(db)
+                    .then(() => resolve(db))
+                    .catch((error) => {
+                        console.warn("[SpotifyLyricsJP] Legacy cache migration failed", error);
+                        resolve(db);
+                    });
+            };
+            request.onerror = () => {
+                console.warn("[SpotifyLyricsJP] IndexedDB cache unavailable", request.error);
+                resolve(null);
+            };
+            request.onblocked = () => {
+                console.warn("[SpotifyLyricsJP] IndexedDB cache open blocked");
+                resolve(null);
+            };
+        });
+        return translationDbPromise;
+    }
+
+    function readIndexedCache(db, key) {
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(TRANSLATION_DB_STORE, "readonly");
+            const request = transaction.objectStore(TRANSLATION_DB_STORE).get(key);
+            request.onsuccess = () => resolve(request.result || null);
+            request.onerror = () => reject(request.error || new Error("翻訳キャッシュを読み込めませんでした。"));
+        });
+    }
+
+    function writeIndexedCache(db, record) {
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(TRANSLATION_DB_STORE, "readwrite");
+            transaction.objectStore(TRANSLATION_DB_STORE).put(record);
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error || new Error("翻訳キャッシュを保存できませんでした。"));
+            transaction.onabort = () => reject(transaction.error || new Error("翻訳キャッシュの保存が中断されました。"));
+        });
+    }
+
+    function trimIndexedCache(db) {
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(TRANSLATION_DB_STORE, "readwrite");
+            const store = transaction.objectStore(TRANSLATION_DB_STORE);
+            const countRequest = store.count();
+            countRequest.onsuccess = () => {
+                let removeCount = Math.max(0, Number(countRequest.result) - TRANSLATION_CACHE_LIMIT);
+                if (!removeCount) return;
+                const cursorRequest = store.index("savedAt").openCursor();
+                cursorRequest.onsuccess = () => {
+                    const cursor = cursorRequest.result;
+                    if (!cursor || removeCount <= 0) return;
+                    cursor.delete();
+                    removeCount--;
+                    cursor.continue();
+                };
+            };
+            transaction.oncomplete = () => resolve();
+            transaction.onerror = () => reject(transaction.error || new Error("翻訳キャッシュを整理できませんでした。"));
+            transaction.onabort = () => reject(transaction.error || new Error("翻訳キャッシュの整理が中断されました。"));
+        });
+    }
+
+    function materializeCachedTranslation(cached, lines) {
         if (!cached || !Array.isArray(cached.translations) || cached.translations.length !== lines.length) return null;
         if (cached.translations.some((text) => typeof text !== "string" || !text.trim())) return null;
-        translationCache.delete(key);
-        translationCache.set(key, cached);
         return {
             lines: lines.map((line, index) => ({ ...line, translation: cached.translations[index] })),
             engine: `${cached.engine}（キャッシュ）`,
@@ -1039,17 +1138,47 @@
         };
     }
 
-    function cacheTranslation(key, translated) {
-        translationCache.delete(key);
-        translationCache.set(key, {
+    async function getCachedTranslation(key, lines) {
+        const db = await openTranslationCacheDb();
+        if (db) {
+            try { return materializeCachedTranslation(await readIndexedCache(db, key), lines); }
+            catch (error) { console.warn("[SpotifyLyricsJP] IndexedDB cache read failed", error); }
+        }
+        const cached = fallbackTranslationCache.get(key);
+        if (cached) {
+            fallbackTranslationCache.delete(key);
+            fallbackTranslationCache.set(key, cached);
+        }
+        return materializeCachedTranslation(cached, lines);
+    }
+
+    function cacheTranslationFallback(key, record) {
+        fallbackTranslationCache.delete(key);
+        fallbackTranslationCache.set(key, record);
+        while (fallbackTranslationCache.size > FALLBACK_TRANSLATION_CACHE_LIMIT) {
+            fallbackTranslationCache.delete(fallbackTranslationCache.keys().next().value);
+        }
+        persistFallbackTranslationCache();
+    }
+
+    async function cacheTranslation(key, translated) {
+        const record = {
+            key,
             translations: translated.lines.map((line) => line.translation || line.original),
             engine: translated.engine,
             savedAt: Date.now()
-        });
-        while (translationCache.size > TRANSLATION_CACHE_LIMIT) {
-            translationCache.delete(translationCache.keys().next().value);
+        };
+        const db = await openTranslationCacheDb();
+        if (db) {
+            try {
+                await writeIndexedCache(db, record);
+                await trimIndexedCache(db);
+                return;
+            } catch (error) {
+                console.warn("[SpotifyLyricsJP] IndexedDB cache write failed; using fallback", error);
+            }
         }
-        persistTranslationCache();
+        cacheTranslationFallback(key, record);
     }
 
     const trackCache = new Map();
@@ -1110,10 +1239,10 @@
             const rawLines = parseLyrics(entry);
             if (!rawLines.length) throw new Error("歌詞データに表示できる行がありませんでした。");
             const translationCacheKey = getTranslationCacheKey(track, settings.translationMode, rawLines);
-            let translated = getCachedTranslation(translationCacheKey, rawLines);
+            let translated = await getCachedTranslation(translationCacheKey, rawLines);
             if (!translated) {
                 translated = await translateLines(rawLines, track);
-                if (translated.cacheable) cacheTranslation(translationCacheKey, translated);
+                if (translated.cacheable) await cacheTranslation(translationCacheKey, translated);
             }
             if (serial !== requestSerial) return;
             if (!options.alternate) cacheSet(track.key, { entry });
@@ -1144,10 +1273,10 @@
         try {
             const rawLines = parseLyrics(entry);
             const translationCacheKey = getTranslationCacheKey(track, settings.translationMode, rawLines);
-            let translated = getCachedTranslation(translationCacheKey, rawLines);
+            let translated = await getCachedTranslation(translationCacheKey, rawLines);
             if (!translated) {
                 translated = await translateLines(rawLines, track);
-                if (translated.cacheable) cacheTranslation(translationCacheKey, translated);
+                if (translated.cacheable) await cacheTranslation(translationCacheKey, translated);
             }
             if (serial !== requestSerial) return;
             setState({ lines: translated.lines, translationEngine: translated.engine, loading: false, status: statusFor(entry, translated.engine), error: "", activeIndex: -1 });
@@ -1622,6 +1751,7 @@
             saveSettings,
             missingKeyForMode,
             claudeModel: CLAUDE_MODEL,
+            translationCacheLimit: TRANSLATION_CACHE_LIMIT,
             setTestState: (patch) => setState(patch),
             getTestState: () => state
         });
