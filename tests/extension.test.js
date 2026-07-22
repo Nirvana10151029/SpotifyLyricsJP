@@ -38,7 +38,7 @@ global.Spicetify = {
     }
 };
 
-require(path.join(__dirname, "..", "spicetify", "spotifyLyricsJP.js"));
+require(path.join(__dirname, "..", "spotifyLyricsJP.js"));
 const api = global.__SLJP_TEST_API;
 const track = { title: "Example Song - Remastered", artist: "Example Artist", album: "Example Album", durationSeconds: 200 };
 

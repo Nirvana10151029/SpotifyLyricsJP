@@ -19,12 +19,15 @@
     }
     delete globalThis.__SLJP_BOOTSTRAP_ATTEMPTS;
 
-    const VERSION = "2.0.10";
+    const VERSION = "2.0.11";
     const STORAGE_KEY = "spotify-lyrics-jp:settings";
+    const TRANSLATION_CACHE_KEY = "spotify-lyrics-jp:translation-cache:v1";
     const CACHE_LIMIT = 40;
+    const TRANSLATION_CACHE_LIMIT = 500;
     const REQUEST_TIMEOUT_MS = 16000;
     const TRANSLATION_TIMEOUT_MS = 65000;
     const LYRICA_TIMEOUT_MS = 8000;
+    const CLAUDE_MODEL = "claude-haiku-4-5-20251001";
     const PROVIDERS = ["LRCLIB", "Lyrica", "Lyrics.ovh"];
     /** Minimum combined score to accept a candidate (prevents wrong-song matches). */
     const MIN_SAFE_SCORE = 380;
@@ -35,6 +38,7 @@
         translationMode: "free",
         geminiApiKey: "",
         deepLApiKey: "",
+        claudeApiKey: "",
         openAiApiKey: "",
         showOriginal: true,
         autoScroll: true
@@ -814,6 +818,53 @@
         });
     }
 
+    async function translateClaude(batch, track) {
+        if (!settings.claudeApiKey) throw new Error("Claude APIキーが設定されていません。");
+        const input = batch.map((line, id) => ({ id, text: line.original }));
+        const schema = {
+            type: "object",
+            properties: {
+                translations: {
+                    type: "array",
+                    items: {
+                        type: "object",
+                        properties: { id: { type: "integer" }, ja: { type: "string" } },
+                        required: ["id", "ja"], additionalProperties: false
+                    }
+                }
+            },
+            required: ["translations"], additionalProperties: false
+        };
+        const body = {
+            model: CLAUDE_MODEL,
+            max_tokens: Math.min(12000, Math.max(2048, batch.length * 140)),
+            temperature: 0.2,
+            system: "あなたはプロの日本語歌詞翻訳者です。歌詞全体の物語、前後関係、比喩、スラング、感情を読み取り、原文にない意味を足さず自然な日本語へ翻訳してください。各行のidを必ず維持してください。",
+            messages: [{ role: "user", content: translationPrompt(track, JSON.stringify(input)) }],
+            output_config: { format: { type: "json_schema", schema } }
+        };
+        const response = await fetchJson("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "x-api-key": settings.claudeApiKey,
+                "anthropic-version": "2023-06-01",
+                "anthropic-dangerous-direct-browser-access": "true"
+            },
+            body: JSON.stringify(body)
+        }, TRANSLATION_TIMEOUT_MS);
+        if (response?.stop_reason === "refusal") throw new Error("Claudeがこの歌詞の翻訳を拒否しました。");
+        if (response?.stop_reason === "max_tokens") throw new Error("Claudeの翻訳結果が長すぎて途中で終了しました。");
+        const outputText = (response?.content || [])
+            .filter((item) => item?.type === "text")
+            .map((item) => item.text || "")
+            .join("")
+            .trim();
+        if (!outputText) throw new Error("Claudeの翻訳結果が空でした。");
+        const parsed = JSON.parse(outputText);
+        return validateTranslations(parsed?.translations, batch.length, "Claude");
+    }
+
     async function translateOpenAI(batch, track) {
         if (!settings.openAiApiKey) throw new Error("OpenAI APIキーが設定されていません。");
         const input = batch.map((line, id) => ({ id, text: line.original }));
@@ -878,6 +929,7 @@
     async function translateBatch(batch, track, mode) {
         if (mode === "gemini") return await translateGemini(batch, track);
         if (mode === "deepl") return await translateDeepL(batch, track);
+        if (mode === "claude") return await translateClaude(batch, track);
         if (mode === "openai") return await translateOpenAI(batch, track);
         return await translateFree(batch);
     }
@@ -886,8 +938,9 @@
         const result = lines.map((line) => ({ ...line }));
         const mode = settings.translationMode;
         const contextMode = mode !== "free";
-        const maxLines = contextMode ? 24 : 8;
-        const maxCharacters = contextMode ? 4000 : 900;
+        const maxLines = mode === "claude" ? 100 : (contextMode ? 24 : 8);
+        const maxCharacters = mode === "claude" ? 12000 : (contextMode ? 4000 : 900);
+        let translatedLineCount = 0;
         let fallbackUsed = false;
         let batch = [];
         let length = 0;
@@ -915,11 +968,88 @@
             }
             if (batch.length && (batch.length >= maxLines || length + line.original.length > maxCharacters)) await flush();
             batch.push({ index, line });
+            translatedLineCount++;
             length += line.original.length;
         }
         await flush();
-        const labels = { free: "無料翻訳", gemini: "Gemini自然訳", deepl: "DeepL翻訳", openai: "GPT自然訳" };
-        return { lines: result, engine: `${labels[mode] || labels.free}${fallbackUsed ? "（一部無料訳）" : ""}` };
+        const labels = { free: "無料翻訳", gemini: "Gemini自然訳", deepl: "DeepL翻訳", claude: "Claude Haiku自然訳", openai: "GPT自然訳" };
+        return {
+            lines: result,
+            engine: `${labels[mode] || labels.free}${fallbackUsed ? "（一部無料訳）" : ""}`,
+            cacheable: translatedLineCount > 0 && (mode === "free" || !fallbackUsed),
+            translatedLineCount
+        };
+    }
+
+    function hashText(text) {
+        let hash = 2166136261;
+        for (let index = 0; index < text.length; index++) {
+            hash ^= text.charCodeAt(index);
+            hash = Math.imul(hash, 16777619);
+        }
+        return (hash >>> 0).toString(36);
+    }
+
+    function translationModeSignature(mode) {
+        return mode === "claude" ? `${mode}:${CLAUDE_MODEL}` : mode;
+    }
+
+    function getTranslationCacheKey(track, mode, lines) {
+        const lyricsIdentity = lines.map((line) => `${line.timeMs}\u001f${line.original}`).join("\u001e");
+        return `${translationModeSignature(mode)}\u001f${track.key}\u001f${hashText(lyricsIdentity)}`;
+    }
+
+    function loadTranslationCache() {
+        try {
+            const stored = Spicetify.LocalStorage.get(TRANSLATION_CACHE_KEY);
+            const parsed = stored ? JSON.parse(stored) : [];
+            if (!Array.isArray(parsed)) return new Map();
+            return new Map(parsed.filter((item) => Array.isArray(item) && typeof item[0] === "string" && item[1]));
+        } catch (error) {
+            console.warn("[SpotifyLyricsJP] Translation cache load failed", error);
+            return new Map();
+        }
+    }
+
+    const translationCache = loadTranslationCache();
+
+    function persistTranslationCache() {
+        try {
+            Spicetify.LocalStorage.set(TRANSLATION_CACHE_KEY, JSON.stringify([...translationCache]));
+        } catch (error) {
+            console.warn("[SpotifyLyricsJP] Translation cache save failed; reducing cache", error);
+            while (translationCache.size > Math.floor(TRANSLATION_CACHE_LIMIT / 2)) {
+                translationCache.delete(translationCache.keys().next().value);
+            }
+            try { Spicetify.LocalStorage.set(TRANSLATION_CACHE_KEY, JSON.stringify([...translationCache])); }
+            catch (retryError) { console.warn("[SpotifyLyricsJP] Reduced translation cache save failed", retryError); }
+        }
+    }
+
+    function getCachedTranslation(key, lines) {
+        const cached = translationCache.get(key);
+        if (!cached || !Array.isArray(cached.translations) || cached.translations.length !== lines.length) return null;
+        if (cached.translations.some((text) => typeof text !== "string" || !text.trim())) return null;
+        translationCache.delete(key);
+        translationCache.set(key, cached);
+        return {
+            lines: lines.map((line, index) => ({ ...line, translation: cached.translations[index] })),
+            engine: `${cached.engine}（キャッシュ）`,
+            cacheable: true
+        };
+    }
+
+    function cacheTranslation(key, translated) {
+        translationCache.delete(key);
+        translationCache.set(key, {
+            translations: translated.lines.map((line) => line.translation || line.original),
+            engine: translated.engine,
+            savedAt: Date.now()
+        });
+        while (translationCache.size > TRANSLATION_CACHE_LIMIT) {
+            translationCache.delete(translationCache.keys().next().value);
+        }
+        persistTranslationCache();
     }
 
     const trackCache = new Map();
@@ -934,6 +1064,7 @@
     function missingKeyForMode(mode) {
         if (mode === "gemini") return !settings.geminiApiKey;
         if (mode === "deepl") return !settings.deepLApiKey;
+        if (mode === "claude") return !settings.claudeApiKey;
         if (mode === "openai") return !settings.openAiApiKey;
         return false;
     }
@@ -978,7 +1109,12 @@
             }
             const rawLines = parseLyrics(entry);
             if (!rawLines.length) throw new Error("歌詞データに表示できる行がありませんでした。");
-            const translated = await translateLines(rawLines, track);
+            const translationCacheKey = getTranslationCacheKey(track, settings.translationMode, rawLines);
+            let translated = getCachedTranslation(translationCacheKey, rawLines);
+            if (!translated) {
+                translated = await translateLines(rawLines, track);
+                if (translated.cacheable) cacheTranslation(translationCacheKey, translated);
+            }
             if (serial !== requestSerial) return;
             if (!options.alternate) cacheSet(track.key, { entry });
             setState({
@@ -1006,7 +1142,13 @@
         }
         setState({ loading: true, status: "翻訳方式を切り替えています…", error: "" });
         try {
-            const translated = await translateLines(parseLyrics(entry), track);
+            const rawLines = parseLyrics(entry);
+            const translationCacheKey = getTranslationCacheKey(track, settings.translationMode, rawLines);
+            let translated = getCachedTranslation(translationCacheKey, rawLines);
+            if (!translated) {
+                translated = await translateLines(rawLines, track);
+                if (translated.cacheable) cacheTranslation(translationCacheKey, translated);
+            }
             if (serial !== requestSerial) return;
             setState({ lines: translated.lines, translationEngine: translated.engine, loading: false, status: statusFor(entry, translated.engine), error: "", activeIndex: -1 });
             updateHighlight(Spicetify.Player.getProgress?.() || 0);
@@ -1050,8 +1192,9 @@
             h("p", { style: { margin: 0, color: "var(--spice-subtext)" } }, "無料翻訳はAPIキー不要です。キーはこのPCのSpotify用ローカル領域に保存されます（暗号化はされません）。"),
             h("label", null, "Gemini APIキー", h("input", { type: "password", value: draft.geminiApiKey, onChange: update("geminiApiKey"), style: inputStyle(), autoComplete: "off" })),
             h("label", null, "DeepL APIキー", h("input", { type: "password", value: draft.deepLApiKey, onChange: update("deepLApiKey"), style: inputStyle(), autoComplete: "off" })),
+            h("label", null, "Claude APIキー", h("input", { type: "password", value: draft.claudeApiKey, onChange: update("claudeApiKey"), style: inputStyle(), autoComplete: "off" })),
             h("label", null, "OpenAI APIキー", h("input", { type: "password", value: draft.openAiApiKey, onChange: update("openAiApiKey"), style: inputStyle(), autoComplete: "off" })),
-            h("p", { style: { margin: 0, fontSize: 12, color: "var(--spice-subtext)" } }, "ChatGPT PlusとOpenAI APIの利用料金は別です。"),
+            h("p", { style: { margin: 0, fontSize: 12, color: "var(--spice-subtext)" } }, "Claude Haiku 4.5を使用します。Claude/ChatGPTの月額プランと各APIの利用料金は別です。"),
             h("button", { className: "sljp-primary", onClick: save }, "保存して現在の曲を翻訳")
         );
     }
@@ -1084,6 +1227,7 @@
         for (const [key, labelText] of [
             ["geminiApiKey", "Gemini APIキー"],
             ["deepLApiKey", "DeepL APIキー"],
+            ["claudeApiKey", "Claude APIキー"],
             ["openAiApiKey", "OpenAI APIキー"]
         ]) {
             const label = document.createElement("label");
@@ -1166,6 +1310,7 @@
                     h("option", { value: "free" }, "無料翻訳"),
                     h("option", { value: "gemini" }, "Gemini自然訳"),
                     h("option", { value: "deepl" }, "DeepL翻訳"),
+                    h("option", { value: "claude" }, "Claude Haiku自然訳"),
                     h("option", { value: "openai" }, "GPT自然訳")
                 ),
                 h("button", { onClick: showSettingsDialog }, "API設定"),
@@ -1350,7 +1495,7 @@
             const alternate = domButton("別ソース", () => loadTrack({ alternate: true }));
             alternate.disabled = snapshot.loading || !snapshot.entry;
             const mode = document.createElement("select");
-            for (const [value, text] of [["free", "無料翻訳"], ["gemini", "Gemini自然訳"], ["deepl", "DeepL翻訳"], ["openai", "GPT自然訳"]]) {
+            for (const [value, text] of [["free", "無料翻訳"], ["gemini", "Gemini自然訳"], ["deepl", "DeepL翻訳"], ["claude", "Claude Haiku自然訳"], ["openai", "GPT自然訳"]]) {
                 const option = document.createElement("option");
                 option.value = value;
                 option.textContent = text;
@@ -1469,6 +1614,14 @@
             buildSearchVariants,
             parseLyrics,
             getNormalLyrics,
+            translateClaude,
+            translateLines,
+            getTranslationCacheKey,
+            getCachedTranslation,
+            cacheTranslation,
+            saveSettings,
+            missingKeyForMode,
+            claudeModel: CLAUDE_MODEL,
             setTestState: (patch) => setState(patch),
             getTestState: () => state
         });
