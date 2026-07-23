@@ -19,7 +19,7 @@
     }
     delete globalThis.__SLJP_BOOTSTRAP_ATTEMPTS;
 
-    const VERSION = "2.0.13";
+    const VERSION = "2.0.14";
     const STORAGE_KEY = "spotify-lyrics-jp:settings";
     const TRANSLATION_CACHE_KEY = "spotify-lyrics-jp:translation-cache:v1";
     const TRANSLATION_DB_NAME = "spotify-lyrics-jp-cache";
@@ -1477,6 +1477,8 @@
                 --sljp-sakura-sidebar: #f7dce6;
                 --sljp-sakura-player: #f4d2df;
                 --sljp-sakura-card: #fff5f8;
+                --sljp-sakura-cream: #fff8f1;
+                --sljp-sakura-rose-beige: #f2e3df;
                 --sljp-sakura-soft: #edc9d6;
                 --sljp-sakura-active: #efb8cc;
                 --sljp-sakura-accent: #df789d;
@@ -1534,7 +1536,144 @@
                 --decorative-base: var(--sljp-sakura-accent) !important;
                 --decorative-subdued: #f0bdcf !important;
             }
-            body, .Root__top-container { background: var(--sljp-sakura-main) !important; color: var(--sljp-sakura-text); }
+            html,
+            body,
+            #main,
+            .Root,
+            .Root__top-container,
+            .Root__globalNav,
+            .Root__top-bar,
+            .Root__main-view,
+            .main-view-container,
+            .main-view-container__scroll-node,
+            .main-view-container__scroll-node-child,
+            .main-content-view,
+            .main-appShell-container,
+            .main-appShell-mainContent,
+            .main-appShell-topBar,
+            .main-topBar-container,
+            [data-testid="main-view-container"],
+            [data-testid="home-page"] {
+                background-color: var(--sljp-sakura-main) !important;
+                color: var(--sljp-sakura-text) !important;
+            }
+            .encore-dark-theme,
+            .encore-light-theme,
+            .encore-base-set,
+            .encore-inverted-light-set,
+            .encore-inverted-dark-set {
+                --background-base: var(--sljp-sakura-main) !important;
+                --background-highlight: var(--sljp-sakura-sidebar) !important;
+                --background-press: #f1cad8 !important;
+                --background-elevated-base: var(--sljp-sakura-card) !important;
+                --background-elevated-highlight: #f9e5ec !important;
+                --background-elevated-press: #f2d4df !important;
+                --text-base: var(--sljp-sakura-text) !important;
+                --text-subdued: var(--sljp-sakura-subtext) !important;
+                --essential-base: var(--sljp-sakura-text) !important;
+                --essential-subdued: var(--sljp-sakura-subtext) !important;
+                --decorative-base: var(--sljp-sakura-accent) !important;
+            }
+            .Root__nav-bar,
+            .main-appShell-sideBar,
+            .main-yourLibraryX-libraryContainer {
+                background-color: var(--sljp-sakura-sidebar) !important;
+            }
+            .Root__now-playing-bar,
+            .main-appShell-playbackBar,
+            .main-nowPlayingBar-container {
+                background-color: var(--sljp-sakura-player) !important;
+            }
+            .Root__right-sidebar,
+            .main-nowPlayingView-container,
+            .main-nowPlayingView-mainContainer,
+            .main-nowPlayingView-mainWrapper,
+            .main-nowPlayingView-panel,
+            .main-nowPlayingView-content {
+                background-color: var(--sljp-sakura-cream) !important;
+            }
+            .main-topBar-background,
+            .main-topBar-overlay,
+            .main-home-homeHeader,
+            .main-actionBarBackground-background,
+            .playlist-playlist-actionBarBackground-background,
+            .main-entityHeader-background,
+            .main-entityHeader-backgroundColor,
+            .Root__main-view::before,
+            .Root__main-view::after,
+            .main-view-container::before,
+            .main-view-container::after {
+                background: var(--sljp-sakura-main) !important;
+                background-color: var(--sljp-sakura-main) !important;
+                background-image: none !important;
+                box-shadow: none !important;
+            }
+            .main-card-card,
+            .main-nowPlayingView-section,
+            .main-contextMenu-menu,
+            .main-globalNav-searchInputContainer,
+            .main-trackCreditsModal-container,
+            .main-confirmDialog-container,
+            .main-playlistEditDetailsModal-container,
+            .GenericModal {
+                background: var(--sljp-sakura-card) !important;
+                color: var(--sljp-sakura-text) !important;
+                box-shadow: 0 8px 28px var(--sljp-sakura-shadow) !important;
+            }
+            .lyrics-lyrics-background,
+            .lyrics-lyricsContainer-LyricsBackground,
+            [class*="lyrics-lyrics-background"],
+            [class*="lyrics-lyricsContainer-LyricsBackground"],
+            .Root__cinema-view,
+            .main-lyricsCinema-container,
+            .main-lyricsCinema-content,
+            .main-nowPlayingView-lyricsContent,
+            .main-nowPlayingView-lyricsGradient,
+            [data-testid="lyrics-page"] {
+                background: var(--sljp-sakura-rose-beige) !important;
+                background-color: var(--sljp-sakura-rose-beige) !important;
+                background-image: none !important;
+                box-shadow: none !important;
+            }
+            .lyrics-lyrics-container,
+            .main-lyricsCinema-container,
+            .main-nowPlayingView-lyricsContent {
+                --lyrics-color-background: var(--sljp-sakura-rose-beige) !important;
+                --lyrics-color-active: var(--sljp-sakura-text) !important;
+                --lyrics-color-inactive: #765461 !important;
+                --lyrics-color-passed: #805867 !important;
+                --lyrics-color-messaging: var(--sljp-sakura-subtext) !important;
+            }
+            .lyrics-lyricsContent-lyric,
+            .lyrics-lyricsContent-text,
+            .main-lyricsCinema-content {
+                color: var(--lyrics-color-inactive, #765461) !important;
+                text-shadow: none !important;
+            }
+            .lyrics-lyricsContent-active,
+            .lyrics-lyricsContent-lyric.lyrics-lyricsContent-active {
+                color: var(--sljp-sakura-text) !important;
+                opacity: 1 !important;
+                text-shadow: none !important;
+            }
+            .lyrics-lyricsContent-previous {
+                color: #805867 !important;
+            }
+            .lyrics-lyricsContent-upcoming {
+                color: #765461 !important;
+            }
+            .main-playButton-PlayButton button,
+            .main-playPauseButton-button,
+            button[data-testid="control-button-playpause"] {
+                background-color: var(--sljp-sakura-accent) !important;
+                color: #ffffff !important;
+            }
+            .main-playButton-PlayButton button svg,
+            .main-playPauseButton-button svg,
+            button[data-testid="control-button-playpause"] svg {
+                fill: #ffffff !important;
+                color: #ffffff !important;
+            }
             .sljp-root { height: 100%; min-height: 0; display: flex; flex-direction: column; color: var(--sljp-sakura-text); background: var(--sljp-sakura-main); }
             .sljp-track { padding: 12px 14px 7px; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             .sljp-toolbar { display: flex; flex-wrap: wrap; gap: 7px; padding: 7px 12px 11px; border-bottom: 1px solid var(--sljp-sakura-border); }

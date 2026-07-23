@@ -45,6 +45,9 @@ const track = { title: "Example Song - Remastered", artist: "Example Artist", al
 
 assert.match(injectedStyle, /--sljp-sakura-main:\s*#fbe7ef/, "桜色テーマを注入する");
 assert.match(injectedStyle, /--background-base:\s*var\(--sljp-sakura-main\)/, "Spotify本体の背景色にも桜色を適用する");
+assert.match(injectedStyle, /\.lyrics-lyrics-background/, "Spotify標準の中央歌詞背景も上書きする");
+assert.match(injectedStyle, /\.main-view-container/, "Spotify中央画面の背景も上書きする");
+assert.match(injectedStyle, /background-image:\s*none\s*!important/, "暗い動的背景を無効化する");
 assert.doesNotMatch(injectedStyle, /rgba\(30,\s*215,\s*96/, "再生中の行へSpotifyグリーンを残さない");
 assert.equal(api.normalizeTitle("Example Song - Remastered"), "examplesong");
 assert.equal(api.isCandidateSafe({
