@@ -19,7 +19,7 @@
     }
     delete globalThis.__SLJP_BOOTSTRAP_ATTEMPTS;
 
-    const VERSION = "2.0.12";
+    const VERSION = "2.0.13";
     const STORAGE_KEY = "spotify-lyrics-jp:settings";
     const TRANSLATION_CACHE_KEY = "spotify-lyrics-jp:translation-cache:v1";
     const TRANSLATION_DB_NAME = "spotify-lyrics-jp-cache";
@@ -1472,36 +1472,100 @@
         const style = document.createElement("style");
         style.id = "spotify-lyrics-jp-style";
         style.textContent = `
-            .sljp-root { height: 100%; min-height: 0; display: flex; flex-direction: column; color: var(--spice-text); background: var(--spice-main); }
+            :root {
+                --sljp-sakura-main: #fbe7ef;
+                --sljp-sakura-sidebar: #f7dce6;
+                --sljp-sakura-player: #f4d2df;
+                --sljp-sakura-card: #fff5f8;
+                --sljp-sakura-soft: #edc9d6;
+                --sljp-sakura-active: #efb8cc;
+                --sljp-sakura-accent: #df789d;
+                --sljp-sakura-accent-strong: #c94f7d;
+                --sljp-sakura-text: #432833;
+                --sljp-sakura-subtext: #765461;
+                --sljp-sakura-border: rgba(123, 75, 92, .18);
+                --sljp-sakura-shadow: rgba(114, 56, 79, .22);
+
+                --spice-main: var(--sljp-sakura-main) !important;
+                --spice-main-elevated: var(--sljp-sakura-card) !important;
+                --spice-highlight: var(--sljp-sakura-sidebar) !important;
+                --spice-highlight-elevated: #f9e5ec !important;
+                --spice-sidebar: var(--sljp-sakura-sidebar) !important;
+                --spice-player: var(--sljp-sakura-player) !important;
+                --spice-card: var(--sljp-sakura-card) !important;
+                --spice-shadow: var(--sljp-sakura-shadow) !important;
+                --spice-selected-row: var(--sljp-sakura-active) !important;
+                --spice-button: var(--sljp-sakura-accent) !important;
+                --spice-button-active: #ffffff !important;
+                --spice-button-disabled: var(--sljp-sakura-soft) !important;
+                --spice-tab-active: var(--sljp-sakura-accent-strong) !important;
+                --spice-notification: var(--sljp-sakura-card) !important;
+                --spice-notification-error: #c74270 !important;
+                --spice-misc: #8e6775 !important;
+                --spice-text: var(--sljp-sakura-text) !important;
+                --spice-subtext: var(--sljp-sakura-subtext) !important;
+                --spice-rgb-main: 251, 231, 239 !important;
+                --spice-rgb-main-elevated: 255, 245, 248 !important;
+                --spice-rgb-highlight: 247, 220, 230 !important;
+                --spice-rgb-highlight-elevated: 249, 229, 236 !important;
+                --spice-rgb-sidebar: 247, 220, 230 !important;
+                --spice-rgb-player: 244, 210, 223 !important;
+                --spice-rgb-card: 255, 245, 248 !important;
+                --spice-rgb-selected-row: 239, 184, 204 !important;
+                --spice-rgb-button: 223, 120, 157 !important;
+                --spice-rgb-button-disabled: 237, 201, 214 !important;
+                --spice-rgb-text: 67, 40, 51 !important;
+                --spice-rgb-subtext: 118, 84, 97 !important;
+
+                --background-base: var(--sljp-sakura-main) !important;
+                --background-highlight: var(--sljp-sakura-sidebar) !important;
+                --background-press: #f1cad8 !important;
+                --background-elevated-base: var(--sljp-sakura-card) !important;
+                --background-elevated-highlight: #f9e5ec !important;
+                --background-elevated-press: #f2d4df !important;
+                --background-tinted-base: rgba(136, 77, 99, .10) !important;
+                --background-tinted-highlight: rgba(136, 77, 99, .16) !important;
+                --background-tinted-press: rgba(136, 77, 99, .22) !important;
+                --text-base: var(--sljp-sakura-text) !important;
+                --text-subdued: var(--sljp-sakura-subtext) !important;
+                --text-bright-accent: #b83e6c !important;
+                --essential-base: var(--sljp-sakura-text) !important;
+                --essential-subdued: var(--sljp-sakura-subtext) !important;
+                --decorative-base: var(--sljp-sakura-accent) !important;
+                --decorative-subdued: #f0bdcf !important;
+            }
+            body, .Root__top-container { background: var(--sljp-sakura-main) !important; color: var(--sljp-sakura-text); }
+            .sljp-root { height: 100%; min-height: 0; display: flex; flex-direction: column; color: var(--sljp-sakura-text); background: var(--sljp-sakura-main); }
             .sljp-track { padding: 12px 14px 7px; font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-            .sljp-toolbar { display: flex; flex-wrap: wrap; gap: 7px; padding: 7px 12px 11px; border-bottom: 1px solid rgba(255,255,255,.08); }
-            .sljp-toolbar button, .sljp-toolbar select, .sljp-primary { border: 0; border-radius: 999px; padding: 7px 11px; color: var(--spice-text); background: var(--spice-button-disabled); font: inherit; cursor: pointer; }
-            .sljp-toolbar button:hover, .sljp-toolbar select:hover, .sljp-primary:hover { filter: brightness(1.18); }
+            .sljp-toolbar { display: flex; flex-wrap: wrap; gap: 7px; padding: 7px 12px 11px; border-bottom: 1px solid var(--sljp-sakura-border); }
+            .sljp-toolbar button, .sljp-toolbar select, .sljp-primary { border: 0; border-radius: 999px; padding: 7px 11px; color: var(--sljp-sakura-text); background: var(--sljp-sakura-soft); font: inherit; cursor: pointer; }
+            .sljp-toolbar button:hover, .sljp-toolbar select:hover, .sljp-primary:hover { filter: saturate(1.08) brightness(.98); }
             .sljp-toolbar button:disabled { opacity: .45; cursor: default; }
-            .sljp-primary { background: var(--spice-button); color: var(--spice-button-active); font-weight: 700; border-radius: 6px; }
-            .sljp-check { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--spice-subtext); }
+            .sljp-primary { background: var(--sljp-sakura-accent); color: #ffffff; font-weight: 700; border-radius: 6px; }
+            .sljp-check { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--sljp-sakura-subtext); }
             .sljp-lines { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 8px 35vh; scroll-behavior: smooth; }
             .sljp-line { border-radius: 8px; padding: 10px 9px; margin: 2px 0; transition: background .18s ease, transform .18s ease; }
-            .sljp-line.active { background: rgba(30, 215, 96, .16); transform: translateX(2px); }
-            .sljp-original { color: var(--spice-subtext); font-size: 12px; line-height: 1.45; margin-bottom: 3px; }
-            .sljp-translation { color: var(--spice-text); font-size: 16px; font-weight: 600; line-height: 1.55; }
-            .sljp-line.active .sljp-translation { color: var(--spice-text); }
-            .sljp-empty { padding: 28px 12px; color: var(--spice-subtext); line-height: 1.7; }
-            .sljp-status { padding: 8px 12px; border-top: 1px solid rgba(255,255,255,.08); color: var(--spice-subtext); font-size: 11px; line-height: 1.35; }
-            .sljp-status.error { color: #ff8a8a; }
-            .sljp-fallback-panel { position: fixed; z-index: 999998; top: 64px; right: 360px; bottom: 96px; width: min(400px, calc(100vw - 24px)); overflow: hidden; border: 1px solid rgba(255,255,255,.13); border-radius: 12px; box-shadow: 0 16px 55px rgba(0,0,0,.6); background: var(--spice-main); }
-            .sljp-fallback-toggle { position: fixed; z-index: 999999; right: 380px; bottom: 108px; border: 0; border-radius: 999px; padding: 10px 15px; background: #1ed760; color: #000; font-weight: 800; cursor: pointer; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
+            .sljp-line.active { background: var(--sljp-sakura-active); transform: translateX(2px); }
+            .sljp-original { color: var(--sljp-sakura-subtext); font-size: 12px; line-height: 1.45; margin-bottom: 3px; }
+            .sljp-translation { color: var(--sljp-sakura-text); font-size: 16px; font-weight: 600; line-height: 1.55; }
+            .sljp-line.active .sljp-translation { color: #352028; }
+            .sljp-empty { padding: 28px 12px; color: var(--sljp-sakura-subtext); line-height: 1.7; }
+            .sljp-status { padding: 8px 12px; border-top: 1px solid var(--sljp-sakura-border); color: var(--sljp-sakura-subtext); font-size: 11px; line-height: 1.35; }
+            .sljp-status.error { color: #b92f61; }
+            .sljp-fallback-panel { position: fixed; z-index: 999998; top: 64px; right: 360px; bottom: 96px; width: min(400px, calc(100vw - 24px)); overflow: hidden; border: 1px solid var(--sljp-sakura-border); border-radius: 12px; box-shadow: 0 16px 55px var(--sljp-sakura-shadow); background: var(--sljp-sakura-main); }
+            .sljp-fallback-toggle { position: fixed; z-index: 999999; right: 380px; bottom: 108px; border: 0; border-radius: 999px; padding: 10px 15px; background: var(--sljp-sakura-accent); color: #ffffff; font-weight: 800; cursor: pointer; box-shadow: 0 8px 24px var(--sljp-sakura-shadow); }
             .sljp-fallback-header { display: flex; align-items: center; gap: 8px; }
             .sljp-fallback-header .sljp-track { flex: 1; min-width: 0; }
-            .sljp-fallback-close { margin-right: 10px; border: 0; border-radius: 50%; width: 30px; height: 30px; color: var(--spice-text); background: var(--spice-button-disabled); cursor: pointer; }
-            .sljp-dom-modal { position: fixed; z-index: 1000000; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(0,0,0,.68); }
-            .sljp-dom-modal-card { width: min(460px, calc(100vw - 40px)); display: grid; gap: 13px; padding: 22px; border-radius: 12px; color: var(--spice-text); background: var(--spice-card); box-shadow: 0 20px 70px rgba(0,0,0,.65); }
+            .sljp-fallback-close { margin-right: 10px; border: 0; border-radius: 50%; width: 30px; height: 30px; color: var(--sljp-sakura-text); background: var(--sljp-sakura-soft); cursor: pointer; }
+            .sljp-dom-modal { position: fixed; z-index: 1000000; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(67, 40, 51, .38); }
+            .sljp-dom-modal-card { width: min(460px, calc(100vw - 40px)); display: grid; gap: 13px; padding: 22px; border-radius: 12px; color: var(--sljp-sakura-text); background: var(--sljp-sakura-card); box-shadow: 0 20px 70px var(--sljp-sakura-shadow); }
             .sljp-dom-modal-card h2, .sljp-dom-modal-card p { margin: 0; }
-            .sljp-dom-modal-card p { color: var(--spice-subtext); line-height: 1.5; }
+            .sljp-dom-modal-card p { color: var(--sljp-sakura-subtext); line-height: 1.5; }
             .sljp-dom-modal-card label { display: grid; gap: 5px; }
-            .sljp-dom-modal-card input { box-sizing: border-box; width: 100%; border: 1px solid var(--spice-button-disabled); border-radius: 6px; padding: 9px 10px; color: var(--spice-text); background: var(--spice-main); outline: none; }
+            .sljp-dom-modal-card input { box-sizing: border-box; width: 100%; border: 1px solid var(--sljp-sakura-soft); border-radius: 6px; padding: 9px 10px; color: var(--sljp-sakura-text); background: var(--sljp-sakura-main); outline: none; }
+            .sljp-dom-modal-card input:focus { border-color: var(--sljp-sakura-accent); box-shadow: 0 0 0 2px rgba(223, 120, 157, .18); }
             .sljp-dom-modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
-            .sljp-dom-modal-actions button { border: 0; border-radius: 999px; padding: 8px 12px; color: var(--spice-text); background: var(--spice-button-disabled); cursor: pointer; }
+            .sljp-dom-modal-actions button { border: 0; border-radius: 999px; padding: 8px 12px; color: var(--sljp-sakura-text); background: var(--sljp-sakura-soft); cursor: pointer; }
         `;
         document.head.appendChild(style);
     }

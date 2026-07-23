@@ -4,12 +4,13 @@ const assert = require("node:assert/strict");
 const path = require("node:path");
 
 global.__SLJP_TEST_MODE = true;
+let injectedStyle = "";
 global.document = {
     getElementById: () => null,
     createElement: (tag) => tag === "textarea"
         ? { _value: "", set innerHTML(value) { this._value = value; }, get value() { return this._value; } }
         : { id: "", textContent: "" },
-    head: { appendChild: () => {} }
+    head: { appendChild: (element) => { injectedStyle = element.textContent; } }
 };
 
 const local = new Map();
@@ -42,6 +43,9 @@ require(path.join(__dirname, "..", "spotifyLyricsJP.js"));
 const api = global.__SLJP_TEST_API;
 const track = { title: "Example Song - Remastered", artist: "Example Artist", album: "Example Album", durationSeconds: 200 };
 
+assert.match(injectedStyle, /--sljp-sakura-main:\s*#fbe7ef/, "桜色テーマを注入する");
+assert.match(injectedStyle, /--background-base:\s*var\(--sljp-sakura-main\)/, "Spotify本体の背景色にも桜色を適用する");
+assert.doesNotMatch(injectedStyle, /rgba\(30,\s*215,\s*96/, "再生中の行へSpotifyグリーンを残さない");
 assert.equal(api.normalizeTitle("Example Song - Remastered"), "examplesong");
 assert.equal(api.isCandidateSafe({
     trackName: "Example Song", artistName: "Other Artist", albumName: "Other Album", duration: 400
